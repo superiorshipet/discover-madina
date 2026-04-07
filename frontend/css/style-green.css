@@ -1,0 +1,28 @@
+/* Green Theme CSS - Replace gold with green */
+
+:root {
+  --green-main: #2ECC8A;
+  --green-light: #58D8A3;
+  --green-dim: #27AE60;
+  --bg-deep: #0D0F14;
+  --bg-mid: #141720;
+  --bg-card: #1A1E2B;
+  --bg-raised: #1F2435;
+  --border: rgba(46,204,138,0.18);
+  --text-main: #F0EDE6;
+  --text-muted: #7A8199;
+  --text-dim: #4A5168;
+  --green: #2ECC8A;
+  --red: #E05555;
+  --blue: #4A90D9;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --sidebar-w: 340px;
+  --shadow: 0 8px 40px rgba(0,0,0,0.6);
+  --shadow-green: 0 0 24px rgba(46,204,138,0.15);
+}
+
+/* Copy all other styles from style.css but replace var(--gold*) with var(--green*) */
+
+ /* Use this file: link rel="stylesheet" href="css/style-green.css" in index.html */
+
