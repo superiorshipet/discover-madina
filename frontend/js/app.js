@@ -7,6 +7,11 @@ let map, markers = [], currentFilter = 'all', currentPlace = null, currentRating
 let chatbotOpen = false;
 let chatHistory = []; // full conversation history for ChatGPT-style memory
 
+// ── ROUTING STATE ─────────────────────────────
+let userLocation = null;        // { lat, lng } — saved when user taps 📍
+let userLocationMarker = null;  // blue dot on map
+let routeLayer = null;          // drawn route polyline
+
 // ── AUTH GUARD ────────────────────────────────
 function getToken()    { return localStorage.getItem('token'); }
 function getUsername() { return localStorage.getItem('username'); }
@@ -23,14 +28,10 @@ function toggleAdminBtn() {
 
 function initAuthGuard() {
   const role = getRole();
-  if (!isLoggedIn()) {
-    // Hide splash immediately and redirect to login
-    const splash = document.getElementById('splash');
-    if (splash) splash.classList.add('hidden');
-    window.location.href = 'pages/login.html';
-    return false;
+  // Guest access - no login redirect
+  if (!localStorage.getItem('role')) {
+    localStorage.setItem('role', 'guest');
   }
-  // Logged in - hide splash and check admin
   const splash = document.getElementById('splash');
   if (splash) splash.classList.add('hidden');
   toggleAdminBtn();
@@ -51,14 +52,11 @@ function authFetch(url, options = {}) {
 
 // ── INIT ──────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  // Auth guard first
   if (!initAuthGuard()) return;
 
-// Update UI for logged-in user
   const role = getRole();
   const username = getUsername();
-  
-  // 1. Login button → Logout
+
   const loginBtn = document.getElementById('loginBtn');
   if (loginBtn) {
     if (isLoggedIn() && username) {
@@ -70,16 +68,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       loginBtn.onclick = null;
     }
   }
-  
-  // 2. Welcome message
+
   const welcomeMsg = document.getElementById('welcomeMsg');
   const userNameSpan = document.getElementById('userNameSpan');
   if (welcomeMsg && username && isLoggedIn()) {
     userNameSpan.textContent = username;
     welcomeMsg.style.display = 'block';
   }
-  
-  // 3. Topbar user icon
+
   const userBtn = document.querySelector('.icon-btn[title="حسابي"]');
   if (userBtn && username && role !== 'guest') {
     userBtn.textContent = username[0].toUpperCase();
@@ -91,28 +87,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     userBtn.href = '#';
     userBtn.onclick = (e) => { e.preventDefault(); showUserMenu(); };
   }
-  
-  // 4. Admin btn (already handled)
-  toggleAdminBtn();
 
-  // Init app
+  toggleAdminBtn();
   initMap();
-  
+
   try {
     await loadAttractionsFromAPI();
   } catch (e) {
     console.error('App init error:', e);
-    // Fallback always works
   }
 
-  // Ensure splash gone
   setTimeout(() => {
     const splash = document.getElementById('splash');
     if (splash) {
       splash.classList.add('hidden');
       setTimeout(() => { if (map) map.invalidateSize(true); }, 100);
     }
-  }, 100); // Fast hide for logged-in users
+  }, 100);
 });
 
 // ── MAP ───────────────────────────────────────
@@ -130,7 +121,6 @@ async function loadAttractionsFromAPI() {
     if (res.ok) {
       const data = await res.json();
       if (data.length > 0) {
-        // Merge with local PLACES for map coords compatibility
         window.LIVE_PLACES = data.map(a => ({
           id: a.id, name: a.name, nameEn: a.nameEn,
           category: a.category, icon: a.icon,
@@ -139,7 +129,6 @@ async function loadAttractionsFromAPI() {
           description: a.description, imageUrl: a.imageUrl,
           tags: [a.category], featured: a.isFeatured
         }));
-        // Auto refresh LIVE_PLACES every 30s for admin changes
         setInterval(loadAttractionsFromAPI, 30000);
         renderPlacesList(window.LIVE_PLACES);
         renderMarkers(window.LIVE_PLACES);
@@ -148,7 +137,6 @@ async function loadAttractionsFromAPI() {
       }
     }
   } catch(e) { console.warn('API unavailable, using local data'); }
-  // Fallback to static data
   renderPlacesList(PLACES);
   renderMarkers(PLACES);
   renderBottomSheet(PLACES.filter(p => p.featured));
@@ -259,18 +247,201 @@ function openDetail(place) {
   document.getElementById('detailDesc').textContent = place.description;
   document.getElementById('detailPanel').classList.add('open');
   map.setView([place.lat, place.lng], 15, { animate: true });
+
+  // Clear any previous route when opening a new place
+  clearRoute();
 }
 
 function closeDetail() {
   document.getElementById('detailPanel').classList.remove('open');
+  clearRoute();
   currentPlace = null;
 }
 
-function getDirections() {
-  if (!currentPlace) return;
-  window.open(`https://www.google.com/maps/dir/?api=1&destination=${currentPlace.lat},${currentPlace.lng}`, '_blank');
+// ── GEOLOCATION — saves location + shows blue dot ──
+function locateUser() {
+  if (!navigator.geolocation) { showToast('الموقع غير مدعوم في هذا المتصفح'); return; }
+  showToast('📍 جاري تحديد موقعك...');
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      // Save globally for routing
+      userLocation = { lat, lng };
+
+      // Remove old marker
+      if (userLocationMarker) map.removeLayer(userLocationMarker);
+
+      // Pulsing blue dot
+      userLocationMarker = L.marker([lat, lng], {
+        icon: L.divIcon({
+          html: `
+            <div style="position:relative;width:22px;height:22px;">
+              <div style="
+                position:absolute;top:0;left:0;
+                width:22px;height:22px;
+                border-radius:50%;
+                background:rgba(74,144,217,0.25);
+                animation:userPulse 1.8s ease-out infinite;">
+              </div>
+              <div style="
+                position:absolute;top:3px;left:3px;
+                width:16px;height:16px;
+                border-radius:50%;
+                background:#4A90D9;
+                border:2.5px solid #fff;
+                box-shadow:0 2px 8px rgba(0,0,0,.4);">
+              </div>
+            </div>`,
+          className: '', iconSize: [22, 22], iconAnchor: [11, 11]
+        })
+      }).addTo(map).bindPopup('📍 أنت هنا').openPopup();
+
+      map.setView([lat, lng], 15, { animate: true });
+      showToast('✅ تم تحديد موقعك — اضغط "اتجاهاتي" لأي مكان');
+    },
+    err => {
+      if (err.code === 1) showToast('❌ يرجى السماح بالوصول للموقع في المتصفح');
+      else showToast('تعذّر الحصول على موقعك، حاول مرة أخرى');
+    },
+    { enableHighAccuracy: true, timeout: 12000 }
+  );
 }
 
+// ── DIRECTIONS — draws route inside the app ────
+async function getDirections() {
+  if (!currentPlace) return;
+
+  // If user hasn't located themselves yet, do it first
+  if (!userLocation) {
+    showToast('📍 يتم تحديد موقعك أولاً...');
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+
+        if (userLocationMarker) map.removeLayer(userLocationMarker);
+        userLocationMarker = L.marker([userLocation.lat, userLocation.lng], {
+          icon: L.divIcon({
+            html: `<div style="position:relative;width:22px;height:22px;">
+              <div style="position:absolute;top:0;left:0;width:22px;height:22px;border-radius:50%;background:rgba(74,144,217,0.25);animation:userPulse 1.8s ease-out infinite;"></div>
+              <div style="position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#4A90D9;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);"></div>
+            </div>`,
+            className: '', iconSize: [22, 22], iconAnchor: [11, 11]
+          })
+        }).addTo(map).bindPopup('📍 أنت هنا').openPopup();
+
+        drawRoute();
+      },
+      () => showToast('❌ يرجى تفعيل الموقع أولاً بالضغط على 📍'),
+      { enableHighAccuracy: true, timeout: 12000 }
+    );
+    return;
+  }
+
+  drawRoute();
+}
+
+async function drawRoute() {
+  if (!userLocation || !currentPlace) return;
+
+  // Clear existing route
+  clearRoute();
+  showToast('🗺️ جاري حساب أقصر طريق...');
+
+  const start = [userLocation.lng, userLocation.lat]; // ORS uses [lng, lat]
+  const end   = [currentPlace.lng, currentPlace.lat];
+
+  try {
+    // Uses OSRM — free, no API key needed
+    const url = `https://router.project-osrm.org/route/v1/driving/${start[0]},${start[1]};${end[0]},${end[1]}?overview=full&geometries=geojson`;
+    const res = await fetch(url);
+
+    if (!res.ok) throw new Error('Route service error');
+    const data = await res.json();
+
+    if (!data.routes || data.routes.length === 0) {
+      showToast('⚠️ لم يتم العثور على مسار');
+      return;
+    }
+
+    const route = data.routes[0];
+    const coords = route.geometry.coordinates.map(c => [c[1], c[0]]); // flip to [lat,lng]
+    const distKm  = (route.distance / 1000).toFixed(1);
+    const distMin = Math.round(route.duration / 60);
+
+    // Draw the route line
+    routeLayer = L.polyline(coords, {
+      color: '#4A90D9',
+      weight: 5,
+      opacity: 0.85,
+      lineJoin: 'round',
+      lineCap: 'round'
+    }).addTo(map);
+
+    // Fit map to show the whole route
+    map.fitBounds(routeLayer.getBounds(), { padding: [60, 60] });
+
+    // Show route info banner
+    showRouteBanner(distKm, distMin);
+
+  } catch (e) {
+    console.error('Routing error:', e);
+    showToast('❌ فشل تحميل المسار، تحقق من الاتصال بالإنترنت');
+  }
+}
+
+function clearRoute() {
+  if (routeLayer) {
+    map.removeLayer(routeLayer);
+    routeLayer = null;
+  }
+  const banner = document.getElementById('routeBanner');
+  if (banner) banner.remove();
+}
+
+function showRouteBanner(distKm, distMin) {
+  // Remove old banner if any
+  const old = document.getElementById('routeBanner');
+  if (old) old.remove();
+
+  const banner = document.createElement('div');
+  banner.id = 'routeBanner';
+  banner.style.cssText = `
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-mid, #1e2330);
+    border: 1px solid var(--border, #2e3547);
+    border-radius: 16px;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    z-index: 800;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    direction: rtl;
+    font-family: 'Cairo', sans-serif;
+    min-width: 260px;
+  `;
+  banner.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <span style="font-size:1rem;font-weight:700;color:var(--gold,#c9a84c);">🗺️ ${distKm} كم</span>
+      <span style="font-size:.8rem;color:var(--text-muted,#8899aa);">⏱ ${distMin} دقيقة تقريباً</span>
+    </div>
+    <div style="width:1px;height:36px;background:var(--border,#2e3547);"></div>
+    <div style="font-size:.82rem;color:var(--text,#cdd6f4);flex:1;">إلى <strong>${currentPlace.name}</strong></div>
+    <button onclick="clearRoute()" style="
+      background:none;border:none;color:var(--text-muted,#8899aa);
+      font-size:1.1rem;cursor:pointer;padding:0 4px;line-height:1;
+    ">✕</button>
+  `;
+  document.body.appendChild(banner);
+}
+
+// ── SAVE PLACE ────────────────────────────────
 function savePlace() {
   if (!currentPlace) return;
   if (!isLoggedIn() || getRole() === 'guest') {
@@ -314,18 +485,7 @@ function triggerImageUpload() {
   input.click();
 }
 
-// ── GEOLOCATION ───────────────────────────────
-function locateUser() {
-  if (!navigator.geolocation) { showToast('الموقع غير مدعوم'); return; }
-  navigator.geolocation.getCurrentPosition(pos => {
-    map.setView([pos.coords.latitude, pos.coords.longitude], 15);
-    L.marker([pos.coords.latitude, pos.coords.longitude], {
-      icon: L.divIcon({ html: '<div style="background:#4A90D9;width:16px;height:16px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5)"></div>', className:'', iconSize:[16,16] })
-    }).addTo(map).bindPopup('أنت هنا').openPopup();
-  }, () => showToast('تعذّر الحصول على موقعك'));
-}
-
-// ── CHATBOT (ChatGPT-style with memory) ───────
+// ── CHATBOT ───────────────────────────────────
 function openChatbot() {
   chatbotOpen = true;
   document.getElementById('chatbot').classList.add('open');
@@ -367,51 +527,54 @@ async function sendChatMessage(text) {
   appendChatMsg(text, 'user');
   chatHistory.push({ role: 'user', content: text });
 
-  // Local GPT-like responses - no API needed
+  const input = document.getElementById('chatInput');
+  const sendBtn = document.querySelector('.send-btn');
+  input.disabled = true;
+  sendBtn.style.opacity = '0.5';
+  sendBtn.disabled = true;
+
   const typingId = 'typing-' + Date.now();
   const body = document.getElementById('chatbotBody');
   body.innerHTML += `<div class="cb-msg bot" id="${typingId}"><div class="cb-bubble typing-indicator"><span></span><span></span><span></span></div></div>`;
   body.scrollTop = body.scrollHeight;
 
-  // Simulate thinking delay
-  setTimeout(() => {
+  try {
+    const response = await fetch(`${API_BASE}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: chatHistory.slice(-8) })
+    });
+
     const typingEl = document.getElementById(typingId);
     if (typingEl) typingEl.remove();
 
-    // GPT-style response based on context + history
-    let reply = generateGPTResponse(text, chatHistory);
-    chatHistory.push({ role: 'assistant', content: reply });
-    appendChatMsg(reply, 'bot');
-    document.getElementById('chatInput').focus();
-  }, 800 + Math.random() * 1200);
-}
-
-function generateGPTResponse(query, history) {
-  const madinaContext = `You are مرشد المدينة, expert guide for Madinah attractions (religious, cultural, entertainment, dining). Respond in fluent Arabic. Be helpful, detailed, recommend based on location/family etc. Key places: المسجد النبوي, مسجد قباء, متحف المدينة, حديقة الملك فهد, مطعم البيك. Always suggest nearby or featured.`;
-
-  const keywords = {
-    'مسجد': '🕌 المسجد النبوي الأقرب، مفتوح 24 ساعة. مساجد أخرى: قباء (24.4397,39.6151), القبلتين.',
-    'مطعم': '🍽️ أقرب: البيك (24.468,39.609), مندي الدخيل. للعائلة: مطاعم قريبة من الحديقة.',
-    'عائلة': '👨‍👩‍👧 حديقة الملك فهد مثالية للأطفال, سوق المدينة المركزي للتسوق.',
-    'متحف': '🏛️ متحف المدينة المنورة (24.471,39.6125) - تاريخ وتراث.',
-    'ساعات': 'معظم الأماكن مفتوحة 9ص-10م, المساجد 24/7.'
-  };
-
-  // Simple matching + context
-  query = query.toLowerCase();
-  for (let k in keywords) if (query.includes(k)) return keywords[k];
-
-  // Fallback based on history
-  if (history.length > 1) return 'بناءً على استفسارك السابق, أنصح بالمسجد النبوي كأفضل وجهة. 🌙 ماذا تريد بالتفصيل؟';
-
-  return 'مرحبا! 🌙 أخبرني ما تبحث: أماكن دينية, ثقافية, مطاعم, عائلية? أقرب مكان لك أو أفضل التقييمات?';
+    if (response.ok) {
+      const data = await response.json();
+      const reply = data.reply || 'عذراً، لم أتمكن من الإجابة.';
+      chatHistory.push({ role: 'assistant', content: reply });
+      appendChatMsg(reply, 'bot');
+    } else {
+      throw new Error(`HTTP ${response.status}`);
+    }
+  } catch (error) {
+    console.error('Chat API error:', error);
+    const typingEl = document.getElementById(typingId);
+    if (typingEl) typingEl.remove();
+    const fallback = 'عذراً، مشكلة في الاتصال بالمساعد الذكي. تأكد من تشغيل الخادم على localhost:5001';
+    appendChatMsg(fallback, 'bot');
+    chatHistory.push({ role: 'assistant', content: fallback });
+  } finally {
+    input.disabled = false;
+    sendBtn.style.opacity = '1';
+    sendBtn.disabled = false;
+    input.focus();
+  }
 }
 
 function appendChatMsg(text, role) {
   const body = document.getElementById('chatbotBody');
   const div = document.createElement('div');
   div.className = `cb-msg ${role}`;
-  // Support newlines in replies
   div.innerHTML = `<div class="cb-bubble">${text.replace(/\n/g, '<br>')}</div>`;
   body.appendChild(div);
   body.scrollTop = body.scrollHeight;

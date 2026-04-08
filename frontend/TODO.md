@@ -1,11 +1,23 @@
-خم# Map Z-Index Fix - TODO
+# Locate User & Directions Features Added ✅
 
-# UI Feedback Updates ✅
+## Implemented:
+- ✅ 📍 Locate User button (topbar) - browser geolocation, blue pulsing dot
+- ✅ 🗺️ Directions button (detail panel) - OSRM routes, polyline + distance banner
+- ✅ Demo data in data.js (6 Madina places) - no backend needed
+- ✅ Guest mode (auto-set role='guest') - buttons visible on Live Server without login
 
-**الطلب الجديد:**
+## Usage:
+1. Open `frontend/index.html` in Live Server
+2. Map loads demo places immediately
+3. Click 📍 (allow location permission)
+4. Click marker → detail → 🗺️ (route appears)
 
-**التعديلات القادمة:**
-- إزالة styles الـ topbar من style.css
-- detail-close موجود ويعمل (z-index:1 position:absolute top/right)
+## Optional Full Setup:
+```
+cd backend/DiscoverMadina
+dotnet run
+```
+- Live attractions from DB
+- Login/reviews/save work
 
-**Status:** جاهز للتنفيذ
+Task complete!

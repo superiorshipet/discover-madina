@@ -215,3 +215,4 @@
 /home/superior/Downloads/madina-v3/discover-madina/backend/DiscoverMadina/obj/Debug/net10.0/DiscoverMadina.genruntimeconfig.cache
 /home/superior/Downloads/madina-v3/discover-madina/backend/DiscoverMadina/obj/Debug/net10.0/ref/DiscoverMadina.dll
 /home/superior/Downloads/madina-v3/discover-madina/backend/DiscoverMadina/bin/Debug/net10.0/DiscoverMadina.staticwebassets.runtime.json
+/home/superior/Downloads/madina-v3/discover-madina/backend/DiscoverMadina/obj/Debug/net10.0/DiscoverMadina.sourcelink.json

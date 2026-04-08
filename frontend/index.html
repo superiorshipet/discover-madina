@@ -49,6 +49,7 @@
 
     <div class="filter-chips" id="filterChips">
       <button class="chip active" onclick="filterCat(this,'all')">الكل</button>
+       <button class="chip" onclick="locateUser()" title="موقعي">موقعي</button>
       <button class="chip" onclick="filterCat(this,'religious')">🕌 ديني</button>
       <button class="chip" onclick="filterCat(this,'cultural')">🏛️ ثقافي</button>
       <button class="chip" onclick="filterCat(this,'entertainment')">🎡 ترفيه</button>
@@ -81,15 +82,6 @@
         <a href="pages/login.html" class="icon-btn" title="حسابي">👤</a>
       </div>
     </header>
-
-    <div class="cat-tabs">
-      <button class="cat-tab active" onclick="filterCatMobile(this,'all')">الكل</button>
-      <button class="cat-tab" onclick="filterCatMobile(this,'religious')">🕌 ديني</button>
-      <button class="cat-tab" onclick="filterCatMobile(this,'cultural')">🏛️ ثقافي</button>
-      <button class="cat-tab" onclick="filterCatMobile(this,'entertainment')">🎡 ترفيه</button>
-      <button class="cat-tab" onclick="filterCatMobile(this,'dining')">🍽️ مطاعم</button>
-    </div>
-
     <div class="bottom-sheet" id="bottomSheet">
       <div class="bs-handle"></div>
       <div class="bs-header">
@@ -109,13 +101,13 @@
     </div>
     <div class="detail-body">
       <h2 class="detail-name" id="detailName"></h2>
+       <button class="chip" onclick="getDirections()">🗺️ الاتجاهات</button>
       <div class="detail-meta">
         <span class="detail-rating" id="detailRating"></span>
         <span class="detail-hours" id="detailHours"></span>
       </div>
       <p class="detail-desc" id="detailDesc"></p>
       <div class="detail-actions">
-        <button class="daction primary" onclick="getDirections()">🗺️ الاتجاهات</button>
         <button class="daction" onclick="savePlace()">⭐ حفظ</button>
         <button class="daction" onclick="openReview()">✏️ تقييم</button>
         <button class="daction" onclick="triggerImageUpload()">📷 صورة</button>
