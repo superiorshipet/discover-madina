@@ -53,6 +53,10 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.UseDefaultFiles(); 
+app.UseStaticFiles(); 
+
+app.MapControllers();
 
 // ensure wwwroot/uploads exists
 var uploadsDir = Path.Combine(app.Environment.WebRootPath ?? "wwwroot", "uploads");
