@@ -4,3 +4,6 @@
 /TODO.mdbackend/bin/
 backend/obj/
 backend/**/appsettings.json
+backend/appsettings.json
+backend/bin/
+backend/obj/
