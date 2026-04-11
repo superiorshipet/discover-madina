@@ -53,51 +53,64 @@
   </div>
   <a href="../index.html" class="back-link">← تصفح كضيف</a>
 </div>
+
 <script>
-const API_BASE = window.location.origin + '/api';
+  // Load data.js first for API_BASE
+  const dataScript = document.createElement('script');
+  dataScript.src = '../js/data.js';
+  dataScript.onload = function() {
+    initRegister();
+  };
+  document.head.appendChild(dataScript);
 
-function showError(msg) {
-  const el = document.getElementById('errorMsg');
-  el.textContent = msg;
-  el.style.display = 'block';
-}
+  function initRegister() {
+    function showError(msg) {
+      const el = document.getElementById('errorMsg');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
 
-async function doRegister() {
-  const u = document.getElementById('username').value.trim();
-  const e = document.getElementById('email').value.trim();
-  const p = document.getElementById('password').value;
-  const c = document.getElementById('confirm').value;
-  const l = document.getElementById('lang').value;
+    async function doRegister() {
+      const u = document.getElementById('username').value.trim();
+      const e = document.getElementById('email').value.trim();
+      const p = document.getElementById('password').value;
+      const c = document.getElementById('confirm').value;
+      const l = document.getElementById('lang').value;
 
-  document.getElementById('errorMsg').style.display = 'none';
-  if (!u || !e || !p) { showError('يرجى تعبئة جميع الحقول'); return; }
-  if (p !== c) { showError('كلمة المرور غير متطابقة'); return; }
-  if (p.length < 6) { showError('كلمة المرور 6 أحرف على الأقل'); return; }
+      document.getElementById('errorMsg').style.display = 'none';
+      if (!u || !e || !p) { showError('يرجى تعبئة جميع الحقول'); return; }
+      if (p !== c) { showError('كلمة المرور غير متطابقة'); return; }
+      if (p.length < 6) { showError('كلمة المرور 6 أحرف على الأقل'); return; }
 
-  const btn = document.getElementById('regBtn');
-  btn.disabled = true;
-  btn.textContent = 'جاري الإنشاء...';
+      const btn = document.getElementById('regBtn');
+      btn.disabled = true;
+      btn.textContent = 'جاري الإنشاء...';
 
-  try {
-    const res = await fetch(`${API_BASE}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: u, email: e, password: p, preferredLanguage: l })
-    });
-    const data = await res.json();
-    if (!res.ok) { showError(data.message || 'خطأ في إنشاء الحساب'); return; }
+      try {
+        const res = await fetch(`${API_BASE}/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, email: e, password: p, preferredLanguage: l })
+        });
+        const data = await res.json();
+        if (!res.ok) { showError(data.message || 'خطأ في إنشاء الحساب'); return; }
 
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('username', data.username);
-    localStorage.setItem('role', data.role);
-    window.location.href = '../index.html';
-  } catch (err) {
-    showError('تعذر الاتصال بالخادم. تأكد من تشغيل الـ backend.');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'إنشاء الحساب';
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('username', data.username);
+        localStorage.setItem('role', data.role);
+        window.location.href = '../index.html';
+      } catch (err) {
+        showError('تعذر الاتصال بالخادم. تأكد من تشغيل الـ backend.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'إنشاء الحساب';
+      }
+    }
+
+    // Global function
+    window.doRegister = doRegister;
   }
-}
 </script>
 </body>
 </html>
+

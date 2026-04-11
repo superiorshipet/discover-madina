@@ -63,64 +63,80 @@
   </div>
   <a href="../index.html" class="back-link">← تصفح كضيف</a>
 </div>
+
 <script>
-const API_BASE = window.location.origin + '/api';
-let currentRole = 'user';
+  // Load data.js first for API_BASE
+  const dataScript = document.createElement('script');
+  dataScript.src = '../js/data.js';
+  dataScript.onload = function() {
+    initLogin();
+  };
+  document.head.appendChild(dataScript);
 
-function setRole(btn, role) {
-  currentRole = role;
-  document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
-}
+  function initLogin() {
+    let currentRole = 'user';
 
-function showError(msg) {
-  const el = document.getElementById('errorMsg');
-  el.textContent = msg;
-  el.style.display = 'block';
-}
+    function setRole(btn, role) {
+      currentRole = role;
+      document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+    }
 
-async function doLogin() {
-  const u = document.getElementById('username').value.trim();
-  const p = document.getElementById('password').value.trim();
-  if (!u || !p) { showError('الرجاء إدخال بيانات الدخول'); return; }
+    function showError(msg) {
+      const el = document.getElementById('errorMsg');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
 
-  const btn = document.getElementById('loginBtn');
-  btn.disabled = true;
-  btn.textContent = 'جاري التحقق...';
-  document.getElementById('errorMsg').style.display = 'none';
+    async function doLogin() {
+      const u = document.getElementById('username').value.trim();
+      const p = document.getElementById('password').value.trim();
+      if (!u || !p) { showError('الرجاء إدخال بيانات الدخول'); return; }
 
-  try {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: u, password: p })
-    });
-    const data = await res.json();
-    if (!res.ok) { showError(data.message || 'خطأ في تسجيل الدخول'); return; }
+      const btn = document.getElementById('loginBtn');
+      btn.disabled = true;
+      btn.textContent = 'جاري التحقق...';
+      document.getElementById('errorMsg').style.display = 'none';
 
-    // Save token + user info
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('username', data.username);
-    localStorage.setItem('role', data.role);
+      try {
+        const res = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p })
+        });
+        const data = await res.json();
+        if (!res.ok) { showError(data.message || 'خطأ في تسجيل الدخول'); return; }
 
-    // Redirect based on role
-    if (data.role === 'admin' || data.role === 'superadmin') {
-      window.location.href = 'admin.html';
-    } else {
+        // Save token + user info
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('username', data.username);
+        localStorage.setItem('role', data.role);
+
+        // Redirect based on role
+        if (data.role === 'admin' || data.role === 'superadmin') {
+          window.location.href = 'admin.html';
+        } else {
+          window.location.href = '../index.html';
+        }
+      } catch (e) {
+        showError('تعذر الاتصال بالخادم. تأكد من تشغيل الـ backend.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'تسجيل الدخول';
+      }
+    }
+
+    function guestLogin() {
+      localStorage.setItem('role', 'guest');
       window.location.href = '../index.html';
     }
-  } catch (e) {
-    showError('تعذر الاتصال بالخادم. تأكد من تشغيل الـ backend.');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'تسجيل الدخول';
-  }
-}
 
-function guestLogin() {
-  localStorage.setItem('role', 'guest');
-  window.location.href = '../index.html';
-}
+    // Global functions for onclick
+    window.setRole = setRole;
+    window.doLogin = doLogin;
+    window.guestLogin = guestLogin;
+  }
 </script>
 </body>
 </html>
+
