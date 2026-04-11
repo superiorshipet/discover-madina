@@ -443,3 +443,5 @@
 /home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/kq8u9j5hj8-{0}-tvgzh7db6s-tvgzh7db6s.gz
 /home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/gejnd2e8s5-{0}-xjrixxg0ua-xjrixxg0ua.gz
 /home/superior/madina/discover-madina/backend/bin/Debug/net10.0/appsettings.json
+/home/superior/madina/discover-madina/backend/bin/Debug/net10.0/Npgsql.dll
+/home/superior/madina/discover-madina/backend/bin/Debug/net10.0/Npgsql.EntityFrameworkCore.PostgreSQL.dll
