@@ -263,7 +263,6 @@
 /home/superior/madina/discover-madina/backend/bin/Debug/net10.0/BuildHost-netcore/zh-Hans/System.CommandLine.resources.dll
 /home/superior/madina/discover-madina/backend/bin/Debug/net10.0/BuildHost-netcore/zh-Hant/System.CommandLine.resources.dll
 /home/superior/madina/discover-madina/backend/bin/Debug/net10.0/appsettings.Development.json
-/home/superior/madina/discover-madina/backend/bin/Debug/net10.0/appsettings.json
 /home/superior/madina/discover-madina/backend/bin/Debug/net10.0/DiscoverMadina.staticwebassets.endpoints.json
 /home/superior/madina/discover-madina/backend/bin/Debug/net10.0/DiscoverMadina.staticwebassets.runtime.json
 /home/superior/madina/discover-madina/backend/bin/Debug/net10.0/DiscoverMadina
@@ -443,3 +442,4 @@
 /home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/1tixsfwdsp-{0}-9w3i58ck43-9w3i58ck43.gz
 /home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/kq8u9j5hj8-{0}-tvgzh7db6s-tvgzh7db6s.gz
 /home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/gejnd2e8s5-{0}-xjrixxg0ua-xjrixxg0ua.gz
+/home/superior/madina/discover-madina/backend/bin/Debug/net10.0/appsettings.json
