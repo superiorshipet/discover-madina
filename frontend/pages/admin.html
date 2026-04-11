@@ -60,10 +60,11 @@
     .section.active{display:block;}
     .loading{color:var(--text-muted);font-size:.88rem;padding:20px;text-align:center;}
     .img-thumb{width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid var(--border);}
-    /* Image upload in form */
     .img-upload-wrap{border:2px dashed var(--border);border-radius:var(--radius-sm);padding:20px;text-align:center;cursor:pointer;transition:border-color .2s;}
     .img-upload-wrap:hover{border-color:var(--gold-dim);}
     .img-preview{max-width:100%;max-height:120px;border-radius:8px;margin-top:10px;display:none;}
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 20px;font-family:'Cairo',sans-serif;font-size:.88rem;color:var(--text-main);z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;}
+    .toast.show{opacity:1;}
     @media(max-width:768px){.admin-nav{display:none}.form-grid{grid-template-columns:1fr}}
   </style>
 </head>
@@ -160,278 +161,365 @@
   </main>
 </div>
 
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
 <script>
-const API_BASE = 'http://localhost:8080/api';
-const token = localStorage.getItem('token');
-const role  = localStorage.getItem('role');
-
-// Auth guard - admin only
-if (!token || (role !== 'admin' && role !== 'superadmin')) {
-  alert('يجب تسجيل الدخول كمشرف أولاً');
-  window.location.href = 'login.html';
-}
-document.getElementById('adminName').textContent = localStorage.getItem('username') || 'مشرف';
-
-function authHeaders() {
-  return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
-}
-
-function showSection(id, btn) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('s-'+id).classList.add('active');
-  btn.classList.add('active');
-  const titles = {overview:'نظرة عامة',attractions:'إدارة الأماكن',reviews:'إدارة التقييمات',users:'المستخدمون'};
-  document.getElementById('pageTitle').textContent = titles[id];
-  if (id==='attractions') loadAttractions();
-  if (id==='reviews')     loadReviews();
-  if (id==='users')       loadUsers();
-}
-
-// ── OVERVIEW ──────────────────────────────────
-async function loadOverview() {
-  try {
-    const res = await fetch(`${API_BASE}/attractions/stats`, {headers: authHeaders()});
-    const stats = await res.json();
-    document.getElementById('statAttractions').textContent = stats.totalAttractions;
-    document.getElementById('statPending').textContent = stats.pendingReviews;
-    document.getElementById('statUsers').textContent = stats.totalUsers;
-    document.getElementById('statReviews').textContent = stats.totalReviews;
-    
-    const atts = stats.recentAttractions;
-    document.getElementById('recentAttractions').innerHTML = `
-      <table class="data-table"><thead><tr><th>المكان</th><th>التصنيف</th><th>التقييم</th></tr></thead>
-      <tbody>${atts.map(a=>`
-        <tr><td><strong>${a.icon} ${a.name}</strong></td>
-        <td><span class="badge ${a.category}">${{religious:'ديني',cultural:'ثقافي',entertainment:'ترفيه',dining:'مطاعم'}[a.category]}</span></td>
-        <td>★ ${a.ratingAvg?.toFixed(1)||'—'}</td></tr>`).join('')}
-      </tbody></table>`;
-  } catch(e) { console.error(e); }
-}
-
-// ── ATTRACTIONS ───────────────────────────────
-async function loadAttractions() {
-  document.getElementById('attractionsTable').innerHTML = '<div class="loading">جاري التحميل...</div>';
-  try {
-    const res = await fetch(`${API_BASE}/attractions`, {headers: authHeaders()});
-    const data = await res.json();
-    const cats = {religious:'ديني',cultural:'ثقافي',entertainment:'ترفيه',dining:'مطاعم'};
-    document.getElementById('attractionsTable').innerHTML = `
-      <table class="data-table">
-        <thead><tr><th>الصورة</th><th>الاسم</th><th>التصنيف</th><th>التقييم</th><th>إجراءات</th></tr></thead>
-        <tbody>${data.map(a=>`
-          <tr>
-            <td>${a.imageUrl ? `<img src="${API_BASE.replace('/api', '')}${a.imageUrl}" class="img-thumb" onerror="this.style.display='none'">` : `<span style="font-size:1.4rem">${a.icon}</span>`}</td>
-            <td><strong>${a.name}</strong><br><small style="color:var(--text-muted)">${a.nameEn}</small></td>
-            <td><span class="badge ${a.category}">${cats[a.category]||a.category}</span></td>
-            <td>★ ${a.ratingAvg?.toFixed(1)||'—'}</td>
-            <td><div class="action-btns">
-              <button class="act-btn" onclick='editAttraction(${JSON.stringify(a)})'>تعديل</button>
-              <button class="act-btn" onclick="uploadAttractionImage(${a.id})">📷</button>
-              <button class="act-btn danger" onclick="deleteAttraction(${a.id})">حذف</button>
-            </div></td>
-          </tr>`).join('')}
-        </tbody>
-      </table>`;
-  } catch(e) {
-    document.getElementById('attractionsTable').innerHTML = '<div class="loading">خطأ في التحميل</div>';
-  }
-}
-
-function editAttraction(a) {
-  document.getElementById('editId').value = a.id;
-  document.getElementById('fName').value = a.name;
-  document.getElementById('fNameEn').value = a.nameEn;
-  document.getElementById('fCategory').value = a.category;
-  document.getElementById('fIcon').value = a.icon;
-  document.getElementById('fLat').value = a.latitude;
-  document.getElementById('fLng').value = a.longitude;
-  document.getElementById('fHours').value = a.openingHours;
-  document.getElementById('fDesc').value = a.description;
-  document.getElementById('fFeatured').value = a.isFeatured ? 'true' : 'false';
-  if (a.imageUrl) {
-      const preview = document.getElementById('imgPreview');
-      preview.src = `${API_BASE.replace('/api', '')}${a.imageUrl}`;
-      preview.style.display = 'block';
-  }
-  document.querySelector('.add-form').scrollIntoView({ behavior: 'smooth' });
-  showToastA('تم تحميل بيانات المكان للتعديل');
-}
-
-async function saveAttraction() {
-  const id = document.getElementById('editId').value;
-  const body = {
-    name: document.getElementById('fName').value,
-    nameEn: document.getElementById('fNameEn').value,
-    category: document.getElementById('fCategory').value,
-    icon: document.getElementById('fIcon').value || '📍',
-    latitude: parseFloat(document.getElementById('fLat').value),
-    longitude: parseFloat(document.getElementById('fLng').value),
-    openingHours: document.getElementById('fHours').value,
-    description: document.getElementById('fDesc').value,
-    isFeatured: document.getElementById('fFeatured').value === 'true',
-    imageUrl: null
-  };
-
-  if (!body.name || !body.latitude || !body.longitude) {
-    showToastA('❌ يرجى ملء الاسم والإحداثيات على الأقل'); return;
+  // ── Global helpers (available before initAdmin) ──────────────────────
+  function showSection(id, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('s-' + id).classList.add('active');
+    btn.classList.add('active');
+    const titles = { overview: 'نظرة عامة', attractions: 'إدارة الأماكن', reviews: 'إدارة التقييمات', users: 'المستخدمون' };
+    document.getElementById('pageTitle').textContent = titles[id];
+    if (id === 'attractions') loadAttractions();
+    if (id === 'reviews')     loadReviews();
+    if (id === 'users')       loadUsers();
   }
 
-  try {
-    const url = id ? `${API_BASE}/attractions/${id}` : `${API_BASE}/attractions`;
-    const method = id ? 'PUT' : 'POST';
-    const res = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(body) });
-    if (!res.ok) throw new Error();
-    const saved = await res.json();
+  function showToastA(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+  }
 
-    // Upload image if selected
-    const imageFile = document.getElementById('fImage').files[0];
-    if (imageFile && saved.id) {
-      const fd = new FormData();
-      fd.append('image', imageFile);
-      await fetch(`${API_BASE}/attractions/${saved.id}/image`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: fd
-      });
-    }
-
-    showToastA('✅ تم الحفظ بنجاح');
-    clearForm();
-    loadAttractions();
-  } catch(e) { showToastA('❌ فشل الحفظ، تحقق من البيانات'); }
-}
-
-async function deleteAttraction(id) {
-  if (!confirm('هل أنت متأكد من الحذف؟')) return;
-  await fetch(`${API_BASE}/attractions/${id}`, { method: 'DELETE', headers: authHeaders() });
-  showToastA('✅ تم الحذف');
-  loadAttractions();
-}
-
-async function uploadAttractionImage(id) {
-  const input = document.createElement('input');
-  input.type = 'file'; input.accept = 'image/jpeg,image/png,image/webp';
-  input.onchange = async (e) => {
-    const file = e.target.files[0];
+  function previewImage(input) {
+    const file = input.files[0];
     if (!file) return;
-    const fd = new FormData(); fd.append('image', file);
-    const res = await fetch(`${API_BASE}/attractions/${id}/image`, {
-      method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: fd
-    });
-    if (res.ok) { showToastA('✅ تم رفع الصورة'); loadAttractions(); }
-    else showToastA('❌ فشل الرفع');
-  };
-  input.click();
-}
+    if (file.size > 5 * 1024 * 1024) { alert('الصورة أكبر من 5MB'); input.value = ''; return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const preview = document.getElementById('imgPreview');
+      preview.src = e.target.result;
+      preview.style.display = 'block';
+      document.getElementById('imgPlaceholder').textContent = '✅ ' + file.name;
+    };
+    reader.readAsDataURL(file);
+  }
 
-function previewImage(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
+  function clearForm() {
+    document.getElementById('editId').value = '';
+    ['fName','fNameEn','fIcon','fHours','fDesc'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('fLat').value = '';
+    document.getElementById('fLng').value = '';
+    document.getElementById('fCategory').value = 'religious';
+    document.getElementById('fFeatured').value = 'true';
+    document.getElementById('fImage').value = '';
     const preview = document.getElementById('imgPreview');
-    preview.src = e.target.result;
-    preview.style.display = 'block';
-    document.getElementById('imgPlaceholder').textContent = file.name;
-  };
-  reader.readAsDataURL(file);
-}
+    preview.src = '';
+    preview.style.display = 'none';
+    document.getElementById('imgPlaceholder').textContent = '📷 اضغط لاختيار صورة (JPG, PNG, WEBP - أقل من 5MB)';
+  }
 
-function clearForm() {
-  document.getElementById('editId').value = '';
-  ['fName','fNameEn','fIcon','fLat','fLng','fHours','fDesc'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('fCategory').value = 'religious';
-  document.getElementById('fFeatured').value = 'true';
-  document.getElementById('fImage').value = '';
-  document.getElementById('imgPreview').style.display = 'none';
-  document.getElementById('imgPlaceholder').textContent = '📷 اضغط لاختيار صورة';
-}
+  function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('username');
+    window.location.href = 'login.html';
+  }
 
-// ── REVIEWS ───────────────────────────────────
-async function loadReviews() {
-  document.getElementById('reviewsList').innerHTML = '<div class="loading">جاري التحميل...</div>';
-  try {
-    const res = await fetch(`${API_BASE}/reviews/pending`, {headers: authHeaders()});
-    const data = await res.json();
-    if (!data.length) {
-      document.getElementById('reviewsList').innerHTML = '<div class="loading">لا توجد تقييمات معلّقة ✅</div>';
+  // ── Placeholders so onclick attrs don't throw before initAdmin runs ──
+  let saveAttraction   = () => showToastA('جاري التهيئة...');
+  let editAttraction   = () => {};
+  let deleteAttraction = () => {};
+  let uploadAttractionImage = () => {};
+  let loadAttractions  = () => {};
+  let loadReviews      = () => {};
+  let loadUsers        = () => {};
+
+  // ── Load data.js (provides API_BASE), then boot ──────────────────────
+  const dataScript = document.createElement('script');
+  dataScript.src = '../js/data.js';
+  dataScript.onload = initAdmin;
+  document.head.appendChild(dataScript);
+
+  function initAdmin() {
+    const token = localStorage.getItem('token');
+    const role  = localStorage.getItem('role');
+
+    if (!token || (role !== 'admin' && role !== 'superadmin')) {
+      alert('يجب تسجيل الدخول كمشرف أولاً');
+      window.location.href = 'login.html';
       return;
     }
-    document.getElementById('reviewsList').innerHTML = data.map(r => `
-      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <div>
-            <strong style="color:var(--text-main)">${r.attractionName || 'مكان غير معروف'}</strong>
-            <span style="color:var(--text-muted);font-size:.78rem;margin-right:8px">— ${r.username}</span>
-          </div>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <span class="badge pending">معلّق</span>
-            <span style="color:var(--gold);">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
-          </div>
-        </div>
-        <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:10px">"${r.comment || 'بدون تعليق'}"</p>
-        <div class="action-btns">
-          <button class="act-btn success" onclick="updateReview(${r.id},'approved')">✅ موافقة</button>
-          <button class="act-btn danger"  onclick="updateReview(${r.id},'rejected')">❌ رفض</button>
-        </div>
-      </div>`).join('');
-  } catch(e) { document.getElementById('reviewsList').innerHTML = '<div class="loading">خطأ في التحميل</div>'; }
-}
 
-async function updateReview(id, status) {
-  await fetch(`${API_BASE}/reviews/${id}/status`, {
-    method: 'PATCH', headers: authHeaders(), body: JSON.stringify(status)
-  });
-  showToastA(status === 'approved' ? '✅ تمت الموافقة' : '❌ تم الرفض');
-  loadReviews();
-}
+    document.getElementById('adminName').textContent = localStorage.getItem('username') || 'مشرف';
 
-// ── USERS ─────────────────────────────────────
-async function loadUsers() {
-  document.getElementById('usersList').innerHTML = '<div class="loading">جاري التحميل...</div>';
-  try {
-    const res = await fetch(`${API_BASE}/users`, {headers: authHeaders()});
-    const data = await res.json();
-    document.getElementById('usersList').innerHTML = `
-      <table class="data-table">
-        <thead><tr><th>المعرف</th><th>اسم المستخدم</th><th>البريد الإلكتروني</th><th>اللغة</th><th>التاريخ</th><th>إجراءات</th></tr></thead>
-        <tbody>${data.map(u=>`
-          <tr>
-            <td>${u.id}</td>
-            <td><strong>${u.username}</strong></td>
-            <td>${u.email}</td>
-            <td>${u.preferredLanguage === 'ar' ? 'العربية' : 'English'}</td>
-            <td>${u.createdAt}</td>
-            <td><div class="action-btns">
-              <button class="act-btn danger" onclick="deleteUser(${u.id})">حذف</button>
-            </div></td>
-          </tr>`).join('')}
-        </tbody>
-      </table>`;
-  } catch(e) {
-    document.getElementById('usersList').innerHTML = '<div class="loading">خطأ في التحميل</div>';
+    function authHeaders() {
+      return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+    }
+
+    // ── OVERVIEW ──────────────────────────────────────────────────────
+    async function loadOverview() {
+      try {
+        const res   = await fetch(`${API_BASE}/attractions/stats`, { headers: authHeaders() });
+        const stats = await res.json();
+        document.getElementById('statAttractions').textContent = stats.totalAttractions ?? '—';
+        document.getElementById('statPending').textContent     = stats.pendingReviews    ?? '—';
+        document.getElementById('statUsers').textContent       = stats.totalUsers        ?? '—';
+        document.getElementById('statReviews').textContent     = stats.totalReviews      ?? '—';
+
+        const atts = stats.recentAttractions || [];
+        const cats  = { religious: 'ديني', cultural: 'ثقافي', entertainment: 'ترفيه', dining: 'مطاعم' };
+        document.getElementById('recentAttractions').innerHTML = `
+          <table class="data-table">
+            <thead><tr><th>المكان</th><th>التصنيف</th><th>التقييم</th></tr></thead>
+            <tbody>${atts.map(a => `
+              <tr>
+                <td><strong>${a.icon || ''} ${a.name}</strong></td>
+                <td><span class="badge ${a.category}">${cats[a.category] || a.category}</span></td>
+                <td>★ ${a.ratingAvg != null ? a.ratingAvg.toFixed(1) : '—'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>`;
+      } catch (e) {
+        document.getElementById('recentAttractions').innerHTML = '<div class="loading">خطأ في تحميل الإحصائيات</div>';
+        console.error(e);
+      }
+    }
+
+    // ── ATTRACTIONS ───────────────────────────────────────────────────
+    loadAttractions = async function () {
+      document.getElementById('attractionsTable').innerHTML = '<div class="loading">جاري التحميل...</div>';
+      try {
+        const res  = await fetch(`${API_BASE}/attractions`, { headers: authHeaders() });
+        const data = await res.json();
+        const cats = { religious: 'ديني', cultural: 'ثقافي', entertainment: 'ترفيه', dining: 'مطاعم' };
+        const baseUrl = API_BASE.replace('/api', '');
+        document.getElementById('attractionsTable').innerHTML = `
+          <table class="data-table">
+            <thead><tr><th>الصورة</th><th>الاسم</th><th>التصنيف</th><th>التقييم</th><th>إجراءات</th></tr></thead>
+            <tbody>${data.map(a => `
+              <tr>
+                <td>${a.imageUrl
+                  ? `<img src="${baseUrl}${a.imageUrl}" class="img-thumb" onerror="this.style.display='none'">`
+                  : `<span style="font-size:1.4rem">${a.icon || '📍'}</span>`}</td>
+                <td><strong>${a.name}</strong><br><small style="color:var(--text-muted)">${a.nameEn || ''}</small></td>
+                <td><span class="badge ${a.category}">${cats[a.category] || a.category}</span></td>
+                <td>★ ${a.ratingAvg != null ? a.ratingAvg.toFixed(1) : '—'}</td>
+                <td><div class="action-btns">
+                  <button class="act-btn" onclick='editAttraction(${JSON.stringify(a)})'>تعديل</button>
+                  <button class="act-btn" onclick="uploadAttractionImage(${a.id})">📷</button>
+                  <button class="act-btn danger" onclick="deleteAttraction(${a.id})">حذف</button>
+                </div></td>
+              </tr>`).join('')}
+            </tbody>
+          </table>`;
+      } catch (e) {
+        document.getElementById('attractionsTable').innerHTML = '<div class="loading">خطأ في التحميل</div>';
+        console.error(e);
+      }
+    };
+
+    editAttraction = function (a) {
+      document.getElementById('editId').value       = a.id;
+      document.getElementById('fName').value        = a.name        || '';
+      document.getElementById('fNameEn').value      = a.nameEn      || '';
+      document.getElementById('fCategory').value    = a.category    || 'religious';
+      document.getElementById('fIcon').value        = a.icon        || '';
+      document.getElementById('fLat').value         = a.latitude    || '';
+      document.getElementById('fLng').value         = a.longitude   || '';
+      document.getElementById('fHours').value       = a.openingHours|| '';
+      document.getElementById('fDesc').value        = a.description || '';
+      document.getElementById('fFeatured').value    = a.isFeatured ? 'true' : 'false';
+      if (a.imageUrl) {
+        const preview = document.getElementById('imgPreview');
+        preview.src = `${API_BASE.replace('/api', '')}${a.imageUrl}`;
+        preview.style.display = 'block';
+      }
+      document.querySelector('.add-form').scrollIntoView({ behavior: 'smooth' });
+      showToastA('تم تحميل بيانات المكان للتعديل');
+    };
+
+    // ✅ FIXED: was broken/incomplete
+    saveAttraction = async function () {
+      const id = document.getElementById('editId').value;
+      const body = {
+        name:         document.getElementById('fName').value.trim(),
+        nameEn:       document.getElementById('fNameEn').value.trim(),
+        category:     document.getElementById('fCategory').value,
+        icon:         document.getElementById('fIcon').value.trim() || '📍',
+        latitude:     parseFloat(document.getElementById('fLat').value),
+        longitude:    parseFloat(document.getElementById('fLng').value),
+        openingHours: document.getElementById('fHours').value.trim(),
+        description:  document.getElementById('fDesc').value.trim(),
+        isFeatured:   document.getElementById('fFeatured').value === 'true',  // ← BUG FIX
+      };
+
+      if (!body.name) { showToastA('يرجى إدخال اسم المكان'); return; }
+      if (isNaN(body.latitude) || isNaN(body.longitude)) { showToastA('يرجى إدخال إحداثيات صحيحة'); return; }
+
+      try {
+        const method = id ? 'PUT' : 'POST';
+        const url    = id ? `${API_BASE}/attractions/${id}` : `${API_BASE}/attractions`;
+        const res    = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(body) });
+
+        if (res.ok) {
+          clearForm();
+          loadAttractions();
+          showToastA(id ? '✅ تم تحديث المكان بنجاح' : '✅ تم إضافة المكان بنجاح');
+        } else {
+          const err = await res.json().catch(() => ({}));
+          showToastA('❌ ' + (err.message || 'حدث خطأ أثناء الحفظ'));
+        }
+      } catch (e) {
+        showToastA('❌ خطأ في الاتصال بالخادم');
+        console.error(e);
+      }
+    };
+
+    deleteAttraction = async function (id) {
+      if (!confirm('هل أنت متأكد من حذف هذا المكان؟')) return;
+      try {
+        const res = await fetch(`${API_BASE}/attractions/${id}`, { method: 'DELETE', headers: authHeaders() });
+        if (res.ok) {
+          loadAttractions();
+          showToastA('✅ تم حذف المكان');
+        } else {
+          showToastA('❌ فشل الحذف');
+        }
+      } catch (e) {
+        showToastA('❌ خطأ في الاتصال بالخادم');
+        console.error(e);
+      }
+    };
+
+    uploadAttractionImage = async function (id) {
+      const input = document.createElement('input');
+      input.type  = 'file';
+      input.accept= 'image/jpeg,image/png,image/webp';
+      input.onchange = async () => {
+        const file = input.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) { showToastA('❌ الصورة أكبر من 5MB'); return; }
+        const formData = new FormData();
+        formData.append('image', file);
+        try {
+          const res = await fetch(`${API_BASE}/attractions/${id}/image`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+          });
+          if (res.ok) {
+            loadAttractions();
+            showToastA('✅ تم رفع الصورة بنجاح');
+          } else {
+            showToastA('❌ فشل رفع الصورة');
+          }
+        } catch (e) {
+          showToastA('❌ خطأ في الاتصال بالخادم');
+          console.error(e);
+        }
+      };
+      input.click();
+    };
+
+    // ── REVIEWS ───────────────────────────────────────────────────────
+    loadReviews = async function () {
+      document.getElementById('reviewsList').innerHTML = '<div class="loading">جاري التحميل...</div>';
+      try {
+        const res  = await fetch(`${API_BASE}/reviews?status=pending`, { headers: authHeaders() });
+        const data = await res.json();
+        if (!data.length) {
+          document.getElementById('reviewsList').innerHTML = '<div class="loading">لا توجد تقييمات معلّقة</div>';
+          return;
+        }
+        document.getElementById('reviewsList').innerHTML = `
+          <table class="data-table">
+            <thead><tr><th>المستخدم</th><th>المكان</th><th>التقييم</th><th>التعليق</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+            <tbody>${data.map(r => `
+              <tr>
+                <td>${r.username || '—'}</td>
+                <td>${r.attractionName || '—'}</td>
+                <td>${'★'.repeat(r.rating || 0)}</td>
+                <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.comment || '—'}</td>
+                <td><span class="badge ${r.status || 'pending'}">${
+                  { approved: 'مقبول', pending: 'معلّق', rejected: 'مرفوض' }[r.status] || r.status
+                }</span></td>
+                <td><div class="action-btns">
+                  <button class="act-btn success" onclick="updateReview(${r.id},'approved')">قبول</button>
+                  <button class="act-btn danger"  onclick="updateReview(${r.id},'rejected')">رفض</button>
+                </div></td>
+              </tr>`).join('')}
+            </tbody>
+          </table>`;
+      } catch (e) {
+        document.getElementById('reviewsList').innerHTML = '<div class="loading">خطأ في التحميل</div>';
+        console.error(e);
+      }
+    };
+
+    window.updateReview = async function (id, status) {
+      try {
+        const res = await fetch(`${API_BASE}/reviews/${id}`, {
+          method: 'PATCH',
+          headers: authHeaders(),
+          body: JSON.stringify({ status })
+        });
+        if (res.ok) {
+          loadReviews();
+          showToastA(status === 'approved' ? '✅ تم قبول التقييم' : '✅ تم رفض التقييم');
+        } else {
+          showToastA('❌ فشل التحديث');
+        }
+      } catch (e) {
+        showToastA('❌ خطأ في الاتصال بالخادم');
+        console.error(e);
+      }
+    };
+
+    // ── USERS ─────────────────────────────────────────────────────────
+    loadUsers = async function () {
+      document.getElementById('usersList').innerHTML = '<div class="loading">جاري التحميل...</div>';
+      try {
+        const res  = await fetch(`${API_BASE}/users`, { headers: authHeaders() });
+        const data = await res.json();
+        document.getElementById('usersList').innerHTML = `
+          <table class="data-table">
+            <thead><tr><th>المستخدم</th><th>البريد الإلكتروني</th><th>الدور</th><th>تاريخ الانضمام</th><th>إجراءات</th></tr></thead>
+            <tbody>${data.map(u => `
+              <tr>
+                <td><strong>${u.username || '—'}</strong></td>
+                <td>${u.email || '—'}</td>
+                <td><span class="badge ${u.role === 'admin' || u.role === 'superadmin' ? 'approved' : 'pending'}">${
+                  { superadmin: 'مدير عام', admin: 'مشرف', user: 'مستخدم' }[u.role] || u.role
+                }</span></td>
+                <td>${u.createdAt ? new Date(u.createdAt).toLocaleDateString('ar-SA') : '—'}</td>
+                <td><div class="action-btns">
+                  ${u.role !== 'superadmin'
+                    ? `<button class="act-btn danger" onclick="deleteUser(${u.id})">حذف</button>`
+                    : '<span style="color:var(--text-muted);font-size:.78rem">محمي</span>'}
+                </div></td>
+              </tr>`).join('')}
+            </tbody>
+          </table>`;
+      } catch (e) {
+        document.getElementById('usersList').innerHTML = '<div class="loading">خطأ في التحميل</div>';
+        console.error(e);
+      }
+    };
+
+    window.deleteUser = async function (id) {
+      if (!confirm('هل أنت متأكد من حذف هذا المستخدم؟')) return;
+      try {
+        const res = await fetch(`${API_BASE}/users/${id}`, { method: 'DELETE', headers: authHeaders() });
+        if (res.ok) {
+          loadUsers();
+          showToastA('✅ تم حذف المستخدم');
+        } else {
+          showToastA('❌ فشل الحذف');
+        }
+      } catch (e) {
+        showToastA('❌ خطأ في الاتصال بالخادم');
+        console.error(e);
+      }
+    };
+
+    // ── Boot: load overview on init ───────────────────────────────────
+    loadOverview();
   }
-}
-
-async function deleteUser(id) {
-  if (!confirm('حذف المستخدم نهائياً؟')) return;
-  await fetch(`${API_BASE}/users/${id}`, { method: 'DELETE', headers: authHeaders() });
-  showToastA('✅ تم الحذف');
-  loadUsers();
-}
-
-function logout() { localStorage.clear(); window.location.href = 'login.html'; }
-
-function showToastA(msg) {
-  let t = document.getElementById('toastA');
-  if (!t) { t = document.createElement('div'); t.id = 'toastA'; t.className = 'toast'; t.style.right='20px'; t.style.left='auto'; document.body.appendChild(t); }
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
-}
-
-// Load overview on start
-loadOverview();
 </script>
 </body>
 </html>

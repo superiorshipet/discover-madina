@@ -1,9 +1,10 @@
 // ============================================
-// DISCOVER MADINA — Static Demo Data
-// Replace with API calls to .NET backend
+// DISCOVER MADINA — Static Demo Data & API Config
 // ============================================
 
-const API_BASE = 'http://localhost:8080/api';
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const API_BASE = isLocal ? 'http://localhost:8080/api' : window.location.origin + '/api';
+
 // Mock data removed - use only DB
 const PLACES = [];
 
@@ -15,3 +16,4 @@ const CHATBOT_RESPONSES = {
   'المسجد النبوي': 'المسجد النبوي مفتوح 24/7 في قلب المدينة المنورة. 🕌 يمكنك الوصول سيراً من معظم الفنادق.',
   'default': 'شكراً لسؤالك! 😊 يمكنني مساعدتك في إيجاد الأماكن الدينية والثقافية والمطاعم. ماذا تريد؟'
 };
+
