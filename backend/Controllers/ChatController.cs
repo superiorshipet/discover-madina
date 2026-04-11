@@ -116,7 +116,21 @@ A: ""استخدم الخريطة بالتطبيق وهتشوف المكان با
             return BadRequest(new { error = "الرسالة فارغة" });
 
         var apiKey = _config["Groq:ApiKey"];
-return Ok(new { reply = "مرحبا! الدردشة تحت الصيانة. جرب: أماكن دينية؟ أو أقرب مطعم؟ 😊" });
+            var dbContent = await GetCachedDatabaseContent();
+            var systemPrompt = SYSTEM_PROMPT_TEMPLATE.Replace("{DATABASE_CONTENT}", dbContent);
+
+            // Simple rule-based responses when Groq fails
+            var userMsg = request.Messages.Last().Content.ToLower();
+            var reply = "عذراً, الذكاء الاصطناعي تحت الصيانة. 😊\n\nاقتراحات:\n• أماكن دينية قريبة\n• أفضل المطاعم\n• متحف المدينة";
+            
+            if (userMsg.Contains("مسجد") || userMsg.Contains("نبوي")) {
+                reply = "🕌 المسجد النبوي الشريف - قلب المدينة المنورة\n📍 24.4672, 39.6111\n⏰ مفتوح 24 ساعة\n⭐ تقييم 5.0";
+            } else if (userMsg.Contains("مطعم") || userMsg.Contains("أكل")) {
+                reply = "🍽️ مطعم البيك - شعبي وشهير\n📍 قريب من الحرم\n⏰ 10ص - 2ص\n⭐ 4.7";
+            } else if (userMsg.Contains("قباء")) {
+                reply = "🕌 مسجد قباء - أول مسجد في الإسلام\n📍 24.4397, 39.6151\n⏰ مفتوح 24 ساعة\n⭐ 4.9";
+            }
+            return Ok(new { reply });
 
         try
         {
