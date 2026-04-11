@@ -2,7 +2,7 @@
 # .NET 8 Backend + Static Frontend + Nginx for prod
 
 ## Stage 1: Build .NET Backend
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /app
 
 # Copy csproj and restore
