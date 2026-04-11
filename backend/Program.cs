@@ -9,13 +9,13 @@ using DiscoverMadina.Repositories.Interfaces;
 var builder = WebApplication.CreateBuilder(args);
 
 // ── DATABASE ──────────────────────────────────────────────────────────────────
-// On Railway: build a PostgreSQL connection string from injected PG* env vars.
-// Locally:    fall back to SQLite via appsettings.json → ConnectionStrings:Default
+// On Railway: PGHOST is injected by the PostgreSQL plugin → use Npgsql
+// Locally:    PGHOST is absent → use SQLite from appsettings.json
 var pgHost = Environment.GetEnvironmentVariable("PGHOST");
+var isPostgres = !string.IsNullOrEmpty(pgHost);
 
-if (!string.IsNullOrEmpty(pgHost))
+if (isPostgres)
 {
-    // Railway PostgreSQL — compose the Npgsql connection string from individual vars
     var pgPort     = Environment.GetEnvironmentVariable("PGPORT")     ?? "5432";
     var pgDb       = Environment.GetEnvironmentVariable("PGDATABASE") ?? "railway";
     var pgUser     = Environment.GetEnvironmentVariable("PGUSER")     ?? "postgres";
@@ -29,7 +29,6 @@ if (!string.IsNullOrEmpty(pgHost))
 }
 else
 {
-    // Local development — SQLite
     var sqliteConn = builder.Configuration.GetConnectionString("Default")
                      ?? "Data Source=discover_madina.db";
     builder.Services.AddDbContext<AppDbContext>(opt =>
@@ -70,16 +69,21 @@ builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>
     p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
 // ── PORT ──────────────────────────────────────────────────────────────────────
-// Railway injects PORT; default to 8080
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
 
-// ── AUTO-MIGRATE ON STARTUP ───────────────────────────────────────────────────
+// ── DATABASE INIT ON STARTUP ──────────────────────────────────────────────────
+// PostgreSQL: EnsureCreated() builds schema directly from the model.
+//             The existing migrations are SQLite-specific and would fail on PG.
+// SQLite:     Migrate() applies the existing migration files as normal.
 using (var scope = app.Services.CreateScope()) {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
+    if (isPostgres)
+        db.Database.EnsureCreated();
+    else
+        db.Database.Migrate();
 }
 
 // ── MIDDLEWARE PIPELINE ───────────────────────────────────────────────────────
@@ -90,7 +94,7 @@ app.UseStaticFiles();   // serves /wwwroot (frontend + uploaded images)
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapControllers();   // ← only once
+app.MapControllers();   // only once
 
 // ── ENSURE UPLOADS DIR EXISTS ─────────────────────────────────────────────────
 var uploadsDir = Path.Combine(app.Environment.WebRootPath ?? "wwwroot", "uploads");
