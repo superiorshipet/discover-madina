@@ -15,8 +15,7 @@ public class ChatController : ControllerBase
     private readonly ILogger<ChatController> _logger;
     private readonly IAttractionRepository _attractionRepo;
     private readonly IReviewRepository _reviewRepo;
-    
-    // Cache database content for 1 hour
+
     private static string? _cachedDatabaseContent = null;
     private static DateTime _cacheTime = DateTime.MinValue;
     private const int CACHE_MINUTES = 60;
@@ -55,8 +54,8 @@ A: ""استخدم الخريطة بالتطبيق وهتشوف المكان با
 ✓ مختصر في الردود";
 
     public ChatController(
-        IConfiguration config, 
-        ILogger<ChatController> logger, 
+        IConfiguration config,
+        ILogger<ChatController> logger,
         IHttpClientFactory httpClientFactory,
         IAttractionRepository attractionRepo,
         IReviewRepository reviewRepo)
@@ -70,7 +69,6 @@ A: ""استخدم الخريطة بالتطبيق وهتشوف المكان با
 
     private async Task<string> GetCachedDatabaseContent()
     {
-        // Return cached content if still valid
         if (_cachedDatabaseContent != null && DateTime.UtcNow.Subtract(_cacheTime).TotalMinutes < CACHE_MINUTES)
             return _cachedDatabaseContent;
 
@@ -90,7 +88,6 @@ A: ""استخدم الخريطة بالتطبيق وهتشوف المكان با
             foreach (var category in groupedByCategory)
             {
                 sb.AppendLine($"\n📌 {category.Key}:");
-                // Only show top 5 attractions per category to keep prompt size reasonable
                 foreach (var attraction in category.Take(5))
                 {
                     var ratingText = attraction.RatingAvg > 0 ? $" ⭐ {attraction.RatingAvg:F1}" : "";
@@ -116,25 +113,11 @@ A: ""استخدم الخريطة بالتطبيق وهتشوف المكان با
             return BadRequest(new { error = "الرسالة فارغة" });
 
         var apiKey = _config["Groq:ApiKey"];
-            var dbContent = await GetCachedDatabaseContent();
-            var systemPrompt = SYSTEM_PROMPT_TEMPLATE.Replace("{DATABASE_CONTENT}", dbContent);
-
-            // Simple rule-based responses when Groq fails
-            var userMsg = request.Messages.Last().Content.ToLower();
-            var reply = "عذراً, الذكاء الاصطناعي تحت الصيانة. 😊\n\nاقتراحات:\n• أماكن دينية قريبة\n• أفضل المطاعم\n• متحف المدينة";
-            
-            if (userMsg.Contains("مسجد") || userMsg.Contains("نبوي")) {
-                reply = "🕌 المسجد النبوي الشريف - قلب المدينة المنورة\n📍 24.4672, 39.6111\n⏰ مفتوح 24 ساعة\n⭐ تقييم 5.0";
-            } else if (userMsg.Contains("مطعم") || userMsg.Contains("أكل")) {
-                reply = "🍽️ مطعم البيك - شعبي وشهير\n📍 قريب من الحرم\n⏰ 10ص - 2ص\n⭐ 4.7";
-            } else if (userMsg.Contains("قباء")) {
-                reply = "🕌 مسجد قباء - أول مسجد في الإسلام\n📍 24.4397, 39.6151\n⏰ مفتوح 24 ساعة\n⭐ 4.9";
-            }
-            return Ok(new { reply });
+        if (string.IsNullOrEmpty(apiKey) || apiKey.StartsWith("your-free"))
+            return BadRequest(new { error = "Groq API key not configured. Get a free key from https://console.groq.com" });
 
         try
         {
-            // Get cached database content
             var dbContent = await GetCachedDatabaseContent();
             var systemPrompt = SYSTEM_PROMPT_TEMPLATE.Replace("{DATABASE_CONTENT}", dbContent);
 
@@ -142,13 +125,11 @@ A: ""استخدم الخريطة بالتطبيق وهتشوف المكان با
             _httpClient.DefaultRequestHeaders.Accept.Clear();
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-            // Build full messages array: system + conversation history
             var allMessages = new List<object>
             {
                 new { role = "system", content = systemPrompt }
             };
 
-            // Add conversation history (max last 6 messages)
             var history = request.Messages.TakeLast(6).ToList();
             foreach (var msg in history)
                 allMessages.Add(new { role = msg.Role, content = msg.Content });
