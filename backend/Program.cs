@@ -39,6 +39,10 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>
     p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
+    var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope()) {

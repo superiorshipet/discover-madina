@@ -14,17 +14,14 @@ WORKDIR "/src/backend"
 RUN dotnet publish "DiscoverMadina.csproj" -c Release -o /app/publish
 
 # Stage 2: Runtime
+# ... (rest of your build steps)
+
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
-
-# Copy the published .NET app
 COPY --from=build /app/publish .
-
-# Copy your frontend folder into wwwroot so .NET can see it
-# (Assuming your HTML is in a folder named 'frontend' in your repo)
 COPY frontend/ ./wwwroot/
 
-# Railway uses port 8080 by default
+# Railway looks for PORT, so we tell .NET to listen there
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 
