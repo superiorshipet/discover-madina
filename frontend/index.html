@@ -68,7 +68,7 @@
   <main class="map-wrap">
     <div id="map"></div>
 
-    <header class="topbar">
+    <header class="topbar"> 
       <button class="menu-btn" onclick="toggleSidebar()">
         <span></span><span></span><span></span>
       </button>
@@ -78,7 +78,6 @@
       </div>
       <div class="topbar-actions">
         <button class="icon-btn" onclick="locateUser()" title="موقعي">📍</button>
-        <button class="icon-btn" onclick="openChatbot()" title="المساعد الذكي">💬</button>
         <a href="pages/login.html" class="icon-btn" title="حسابي">👤</a>
       </div>
     </header>
@@ -91,32 +90,8 @@
       <div class="bs-cards" id="bsCards"></div>
     </div>
   </main>
-
-  <!-- Place Detail Panel -->
-  <div class="detail-panel" id="detailPanel">
-    <button class="detail-close" onclick="closeDetail()">✕</button>
-    <div class="detail-img-wrap">
-      <div class="detail-img" id="detailImg"></div>
-      <div class="detail-badge" id="detailCat"></div>
-    </div>
-    <div class="detail-body">
-      <h2 class="detail-name" id="detailName"></h2>
-       <button class="chip" onclick="getDirections()">🗺️ الاتجاهات</button>
-      <div class="detail-meta">
-        <span class="detail-rating" id="detailRating"></span>
-        <span class="detail-hours" id="detailHours"></span>
-      </div>
-      <p class="detail-desc" id="detailDesc"></p>
-      <div class="detail-actions">
-        <button class="daction" onclick="savePlace()">⭐ حفظ</button>
-        <button class="daction" onclick="openReview()">✏️ تقييم</button>
-        <button class="daction" onclick="triggerImageUpload()">📷 صورة</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Chatbot -->
-  <div class="chatbot" id="chatbot">
+    <button class="chatbot-fab" id="chatbotFab" onclick="openChatbot()">💬</button>
+ <div class="chatbot" id="chatbot">
     <div class="chatbot-header">
       <div class="cb-info">
         <div class="cb-avatar">م</div>
@@ -144,7 +119,31 @@
       </button>
     </div>
   </div>
-  <button class="chatbot-fab" id="chatbotFab" onclick="openChatbot()">💬</button>
+
+  <!-- Place Detail Panel -->
+  <div class="detail-panel" id="detailPanel">
+    <button class="detail-close" onclick="closeDetail()">✕</button>
+    <div class="detail-img-wrap">
+      <div class="detail-img" id="detailImg"></div>
+      <div class="detail-badge" id="detailCat"></div>
+    </div>
+    <div class="detail-body">
+      <h2 class="detail-name" id="detailName"></h2>
+       <button class="daction" onclick="getDirections()">🗺️ الاتجاهات</button>
+        <button class="daction" onclick="savePlace()">⭐ حفظ</button>
+        <button class="daction" onclick="openReview()">✏️ تقييم</button>
+        <button class="daction" onclick="triggerImageUpload()">📷 صورة</button>
+      <div class="detail-meta">
+        <span class="detail-rating" id="detailRating"></span>
+        <span class="detail-hours" id="detailHours"></span>
+      </div>
+      <p class="detail-desc" id="detailDesc"></p>
+      <div class="detail-actions">
+    </div>
+  </div>
+
+  <!-- Chatbot -->
+ 
 
   <!-- Review Modal -->
   <div class="modal-overlay" id="reviewOverlay" onclick="closeReview()">
