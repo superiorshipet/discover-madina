@@ -116,8 +116,7 @@ A: ""استخدم الخريطة بالتطبيق وهتشوف المكان با
             return BadRequest(new { error = "الرسالة فارغة" });
 
         var apiKey = _config["Groq:ApiKey"];
-        if (string.IsNullOrEmpty(apiKey) || apiKey.StartsWith("your-free"))
-            return BadRequest(new { error = "Groq API key not configured. Get a free key from https://console.groq.com" });
+return Ok(new { reply = "مرحبا! الدردشة تحت الصيانة. جرب: أماكن دينية؟ أو أقرب مطعم؟ 😊" });
 
         try
         {
