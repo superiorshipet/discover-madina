@@ -1,4 +1,6 @@
 /.dist
 /.history
 /README.md
-/TODO.md
+/TODO.mdbackend/bin/
+backend/obj/
+backend/**/appsettings.json
