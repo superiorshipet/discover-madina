@@ -1,18 +1,14 @@
 // ============================================
 // DISCOVER MADINA — Main App Logic
 // ============================================
-// API_BASE from data.js
-
 let map, markers = [], currentFilter = 'all', currentPlace = null, currentRating = 0;
 let chatbotOpen = false;
-let chatHistory = []; // full conversation history for ChatGPT-style memory
+let chatHistory = [];
+let userLocation = null;
+let userLocationMarker = null;
+let routeLayer = null;
 
-// ── ROUTING STATE ─────────────────────────────
-let userLocation = null;        // { lat, lng } — saved when user taps 📍
-let userLocationMarker = null;  // blue dot on map
-let routeLayer = null;          // drawn route polyline
-
-// ── AUTH GUARD ────────────────────────────────
+// ── AUTH ──────────────────────────────────────
 function getToken()    { return localStorage.getItem('token'); }
 function getUsername() { return localStorage.getItem('username'); }
 function getRole()     { return localStorage.getItem('role') || 'guest'; }
@@ -21,17 +17,11 @@ function isAdmin()     { return getRole() === 'admin' || getRole() === 'superadm
 
 function toggleAdminBtn() {
   const adminBtn = document.getElementById('adminBtn');
-  if (adminBtn) {
-    adminBtn.classList.toggle('hidden', !isAdmin());
-  }
+  if (adminBtn) adminBtn.classList.toggle('hidden', !isAdmin());
 }
 
 function initAuthGuard() {
-  const role = getRole();
-  // Guest access - no login redirect
-  if (!localStorage.getItem('role')) {
-    localStorage.setItem('role', 'guest');
-  }
+  if (!localStorage.getItem('role')) localStorage.setItem('role', 'guest');
   const splash = document.getElementById('splash');
   if (splash) splash.classList.add('hidden');
   toggleAdminBtn();
@@ -97,6 +87,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('App init error:', e);
   }
 
+  // ✅ Single interval — not inside loadAttractionsFromAPI
+  setInterval(loadAttractionsFromAPI, 30000);
+
   setTimeout(() => {
     const splash = document.getElementById('splash');
     if (splash) {
@@ -104,6 +97,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       setTimeout(() => { if (map) map.invalidateSize(true); }, 100);
     }
   }, 100);
+
+  // Close sidebar when clicking outside on mobile
+  document.addEventListener('click', (e) => {
+    const sidebar = document.getElementById('sidebar');
+    const menuBtn = document.querySelector('.menu-btn');
+    if (sidebar && sidebar.classList.contains('mobile-open')) {
+      if (!sidebar.contains(e.target) && !menuBtn?.contains(e.target)) {
+        sidebar.classList.remove('mobile-open');
+        setTimeout(() => { if (map) map.invalidateSize(); }, 220);
+      }
+    }
+  });
 });
 
 // ── MAP ───────────────────────────────────────
@@ -129,7 +134,6 @@ async function loadAttractionsFromAPI() {
           description: a.description, imageUrl: a.imageUrl,
           tags: [a.category], featured: a.isFeatured
         }));
-        setInterval(loadAttractionsFromAPI, 30000);
         renderPlacesList(window.LIVE_PLACES);
         renderMarkers(window.LIVE_PLACES);
         renderBottomSheet(window.LIVE_PLACES.filter(p => p.featured));
@@ -159,12 +163,11 @@ function renderMarkers(places) {
   });
 }
 
-// ── SIDEBAR ───────────────────────────────────
+// ── SIDEBAR TOGGLE ────────────────────────────
 function toggleSidebar() {
-  if (window.innerWidth <= 768) {
-    document.getElementById('sidebar').classList.toggle('mobile-open');
-    setTimeout(() => map.invalidateSize(), 220);
-  }
+  const sidebar = document.getElementById('sidebar');
+  sidebar.classList.toggle('mobile-open');
+  setTimeout(() => { if (map) map.invalidateSize(); }, 220);
 }
 
 // ── FILTER ────────────────────────────────────
@@ -247,8 +250,6 @@ function openDetail(place) {
   document.getElementById('detailDesc').textContent = place.description;
   document.getElementById('detailPanel').classList.add('open');
   map.setView([place.lat, place.lng], 15, { animate: true });
-
-  // Clear any previous route when opening a new place
   clearRoute();
 }
 
@@ -258,47 +259,25 @@ function closeDetail() {
   currentPlace = null;
 }
 
-// ── GEOLOCATION — saves location + shows blue dot ──
+// ── GEOLOCATION ───────────────────────────────
 function locateUser() {
   if (!navigator.geolocation) { showToast('الموقع غير مدعوم في هذا المتصفح'); return; }
   showToast('📍 جاري تحديد موقعك...');
-
   navigator.geolocation.getCurrentPosition(
     pos => {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
-
-      // Save globally for routing
       userLocation = { lat, lng };
-
-      // Remove old marker
       if (userLocationMarker) map.removeLayer(userLocationMarker);
-
-      // Pulsing blue dot
       userLocationMarker = L.marker([lat, lng], {
         icon: L.divIcon({
-          html: `
-            <div style="position:relative;width:22px;height:22px;">
-              <div style="
-                position:absolute;top:0;left:0;
-                width:22px;height:22px;
-                border-radius:50%;
-                background:rgba(74,144,217,0.25);
-                animation:userPulse 1.8s ease-out infinite;">
-              </div>
-              <div style="
-                position:absolute;top:3px;left:3px;
-                width:16px;height:16px;
-                border-radius:50%;
-                background:#4A90D9;
-                border:2.5px solid #fff;
-                box-shadow:0 2px 8px rgba(0,0,0,.4);">
-              </div>
-            </div>`,
+          html: `<div style="position:relative;width:22px;height:22px;">
+            <div style="position:absolute;top:0;left:0;width:22px;height:22px;border-radius:50%;background:rgba(74,144,217,0.25);animation:userPulse 1.8s ease-out infinite;"></div>
+            <div style="position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#4A90D9;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);"></div>
+          </div>`,
           className: '', iconSize: [22, 22], iconAnchor: [11, 11]
         })
       }).addTo(map).bindPopup('📍 أنت هنا').openPopup();
-
       map.setView([lat, lng], 15, { animate: true });
       showToast('✅ تم تحديد موقعك — اضغط "اتجاهاتي" لأي مكان');
     },
@@ -310,17 +289,14 @@ function locateUser() {
   );
 }
 
-// ── DIRECTIONS — draws route inside the app ────
+// ── DIRECTIONS ────────────────────────────────
 async function getDirections() {
   if (!currentPlace) return;
-
-  // If user hasn't located themselves yet, do it first
   if (!userLocation) {
     showToast('📍 يتم تحديد موقعك أولاً...');
     navigator.geolocation.getCurrentPosition(
       pos => {
         userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-
         if (userLocationMarker) map.removeLayer(userLocationMarker);
         userLocationMarker = L.marker([userLocation.lat, userLocation.lng], {
           icon: L.divIcon({
@@ -331,7 +307,6 @@ async function getDirections() {
             className: '', iconSize: [22, 22], iconAnchor: [11, 11]
           })
         }).addTo(map).bindPopup('📍 أنت هنا').openPopup();
-
         drawRoute();
       },
       () => showToast('❌ يرجى تفعيل الموقع أولاً بالضغط على 📍'),
@@ -339,53 +314,26 @@ async function getDirections() {
     );
     return;
   }
-
   drawRoute();
 }
 
 async function drawRoute() {
   if (!userLocation || !currentPlace) return;
-
-  // Clear existing route
   clearRoute();
   showToast('🗺️ جاري حساب أقصر طريق...');
-
-  const start = [userLocation.lng, userLocation.lat]; // ORS uses [lng, lat]
-  const end   = [currentPlace.lng, currentPlace.lat];
-
   try {
-    // Uses OSRM — free, no API key needed
-    const url = `https://router.project-osrm.org/route/v1/driving/${start[0]},${start[1]};${end[0]},${end[1]}?overview=full&geometries=geojson`;
+    const url = `https://router.project-osrm.org/route/v1/driving/${userLocation.lng},${userLocation.lat};${currentPlace.lng},${currentPlace.lat}?overview=full&geometries=geojson`;
     const res = await fetch(url);
-
     if (!res.ok) throw new Error('Route service error');
     const data = await res.json();
-
-    if (!data.routes || data.routes.length === 0) {
-      showToast('⚠️ لم يتم العثور على مسار');
-      return;
-    }
-
+    if (!data.routes || data.routes.length === 0) { showToast('⚠️ لم يتم العثور على مسار'); return; }
     const route = data.routes[0];
-    const coords = route.geometry.coordinates.map(c => [c[1], c[0]]); // flip to [lat,lng]
+    const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
     const distKm  = (route.distance / 1000).toFixed(1);
     const distMin = Math.round(route.duration / 60);
-
-    // Draw the route line
-    routeLayer = L.polyline(coords, {
-      color: '#4A90D9',
-      weight: 5,
-      opacity: 0.85,
-      lineJoin: 'round',
-      lineCap: 'round'
-    }).addTo(map);
-
-    // Fit map to show the whole route
+    routeLayer = L.polyline(coords, { color: '#4A90D9', weight: 5, opacity: 0.85, lineJoin: 'round', lineCap: 'round' }).addTo(map);
     map.fitBounds(routeLayer.getBounds(), { padding: [60, 60] });
-
-    // Show route info banner
     showRouteBanner(distKm, distMin);
-
   } catch (e) {
     console.error('Routing error:', e);
     showToast('❌ فشل تحميل المسار، تحقق من الاتصال بالإنترنت');
@@ -393,50 +341,25 @@ async function drawRoute() {
 }
 
 function clearRoute() {
-  if (routeLayer) {
-    map.removeLayer(routeLayer);
-    routeLayer = null;
-  }
+  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
   const banner = document.getElementById('routeBanner');
   if (banner) banner.remove();
 }
 
 function showRouteBanner(distKm, distMin) {
-  // Remove old banner if any
   const old = document.getElementById('routeBanner');
   if (old) old.remove();
-
   const banner = document.createElement('div');
   banner.id = 'routeBanner';
-  banner.style.cssText = `
-    position: fixed;
-    bottom: 90px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--bg-mid, #1e2330);
-    border: 1px solid var(--border, #2e3547);
-    border-radius: 16px;
-    padding: 12px 20px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    z-index: 800;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-    direction: rtl;
-    font-family: 'Cairo', sans-serif;
-    min-width: 260px;
-  `;
+  banner.style.cssText = `position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--bg-mid,#1e2330);border:1px solid var(--border,#2e3547);border-radius:16px;padding:12px 20px;display:flex;align-items:center;gap:16px;z-index:800;box-shadow:0 4px 20px rgba(0,0,0,0.5);direction:rtl;font-family:'Cairo',sans-serif;min-width:260px;`;
   banner.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-size:1rem;font-weight:700;color:var(--gold,#c9a84c);">🗺️ ${distKm} كم</span>
+      <span style="font-size:1rem;font-weight:700;color:var(--gold,#2ECC8A);">🗺️ ${distKm} كم</span>
       <span style="font-size:.8rem;color:var(--text-muted,#8899aa);">⏱ ${distMin} دقيقة تقريباً</span>
     </div>
     <div style="width:1px;height:36px;background:var(--border,#2e3547);"></div>
     <div style="font-size:.82rem;color:var(--text,#cdd6f4);flex:1;">إلى <strong>${currentPlace.name}</strong></div>
-    <button onclick="clearRoute()" style="
-      background:none;border:none;color:var(--text-muted,#8899aa);
-      font-size:1.1rem;cursor:pointer;padding:0 4px;line-height:1;
-    ">✕</button>
+    <button onclick="clearRoute()" style="background:none;border:none;color:var(--text-muted,#8899aa);font-size:1.1rem;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
   `;
   document.body.appendChild(banner);
 }
@@ -477,9 +400,7 @@ function triggerImageUpload() {
         openDetail(currentPlace);
         showToast('✅ تم رفع الصورة بنجاح');
         loadAttractionsFromAPI();
-      } else {
-        showToast('❌ فشل رفع الصورة');
-      }
+      } else { showToast('❌ فشل رفع الصورة'); }
     } catch { showToast('❌ خطأ في الاتصال'); }
   };
   input.click();
@@ -508,13 +429,11 @@ function clearChat() {
       <button onclick="sendSuggestion(this)">المسجد النبوي</button>
     </div>`;
 }
-
 function sendSuggestion(btn) {
   const text = btn.textContent;
   btn.parentElement.remove();
   sendChatMessage(text);
 }
-
 async function sendChat() {
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
@@ -522,55 +441,40 @@ async function sendChat() {
   input.value = '';
   await sendChatMessage(text);
 }
-
 async function sendChatMessage(text) {
   appendChatMsg(text, 'user');
   chatHistory.push({ role: 'user', content: text });
-
   const input = document.getElementById('chatInput');
   const sendBtn = document.querySelector('.send-btn');
-  input.disabled = true;
-  sendBtn.style.opacity = '0.5';
-  sendBtn.disabled = true;
-
+  input.disabled = true; sendBtn.style.opacity = '0.5'; sendBtn.disabled = true;
   const typingId = 'typing-' + Date.now();
   const body = document.getElementById('chatbotBody');
   body.innerHTML += `<div class="cb-msg bot" id="${typingId}"><div class="cb-bubble typing-indicator"><span></span><span></span><span></span></div></div>`;
   body.scrollTop = body.scrollHeight;
-
   try {
     const response = await fetch(`${API_BASE}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: chatHistory.slice(-8) })
     });
-
     const typingEl = document.getElementById(typingId);
     if (typingEl) typingEl.remove();
-
     if (response.ok) {
       const data = await response.json();
       const reply = data.reply || 'عذراً، لم أتمكن من الإجابة.';
       chatHistory.push({ role: 'assistant', content: reply });
       appendChatMsg(reply, 'bot');
-    } else {
-      throw new Error(`HTTP ${response.status}`);
-    }
+    } else { throw new Error(`HTTP ${response.status}`); }
   } catch (error) {
-    console.error('Chat API error:', error);
     const typingEl = document.getElementById(typingId);
     if (typingEl) typingEl.remove();
-    const fallback = 'عذراً، مشكلة في الاتصال بالمساعد الذكي. تأكد من تشغيل الخادم.';
+    const fallback = 'عذراً، مشكلة في الاتصال بالمساعد الذكي.';
     appendChatMsg(fallback, 'bot');
     chatHistory.push({ role: 'assistant', content: fallback });
   } finally {
-    input.disabled = false;
-    sendBtn.style.opacity = '1';
-    sendBtn.disabled = false;
-    input.focus();
+    input.disabled = false; sendBtn.style.opacity = '1'; sendBtn.disabled = false; input.focus();
   }
 }
-
 function appendChatMsg(text, role) {
   const body = document.getElementById('chatbotBody');
   const div = document.createElement('div');
@@ -594,11 +498,7 @@ function showUserMenu() {
   document.body.appendChild(menu);
   setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 10);
 }
-
-function logout() {
-  localStorage.clear();
-  window.location.href = 'pages/login.html';
-}
+function logout() { localStorage.clear(); window.location.href = 'pages/login.html'; }
 
 // ── REVIEW MODAL ──────────────────────────────
 function openReview() {

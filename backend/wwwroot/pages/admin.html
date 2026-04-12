@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>لوحة الإدارة | Discover Madina</title>
   <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="../css/style.css?v=2"/>
   <style>
     body{overflow:auto;}
     .admin-layout{display:flex;min-height:100vh;}
@@ -21,6 +21,8 @@
     .nav-footer{padding:14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;}
     .admin-main{flex:1;padding:24px;overflow-y:auto;background:var(--bg-deep);}
     .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;}
+    .admin-menu-btn{display:none;background:none;border:none;color:var(--text-main);font-size:1.2rem;cursor:pointer;padding:8px;display:flex;flex-direction:column;gap:4px;}
+    .admin-menu-btn span{width:20px;height:2px;background:currentColor;transition:.2s;}
     .page-title{font-family:'Amiri',serif;font-size:1.5rem;color:var(--text-main);}
     .admin-badge{display:flex;align-items:center;gap:8px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 14px;font-size:.82rem;}
     .admin-dot{width:8px;height:8px;background:var(--green);border-radius:50%;}
@@ -64,8 +66,33 @@
     .img-upload-wrap{border:2px dashed var(--border);border-radius:var(--radius-sm);padding:20px;text-align:center;cursor:pointer;transition:border-color .2s;}
     .img-upload-wrap:hover{border-color:var(--gold-dim);}
     .img-preview{max-width:100%;max-height:120px;border-radius:8px;margin-top:10px;display:none;}
-    @media(max-width:768px){.admin-nav{display:none}.form-grid{grid-template-columns:1fr}}
+    /* Enhanced mobile dashboard - tables scroll horizontally, touch-friendly */
+    .table-wrapper{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px;border-radius:var(--radius-sm);border:1px solid var(--border);}
+    @media (max-width: 1200px) {
+      .admin-nav{display:none;}
+      .form-grid{grid-template-columns:1fr;}
+      .admin-menu-btn{display:flex !important;}
+      .admin-main{padding:12px;}
+      .page-header{margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+      .data-table{font-size:.78rem;}
+      .data-table th{padding:8px 6px;font-size:.72rem;}
+      .data-table td{padding:10px 6px;}
+      .act-btn{padding:6px 12px !important;min-height:40px !important;font-size:.74rem;flex:1;margin:1px;}
+      .action-btns{gap:4px;flex-wrap:nowrap;}
+      .stats-grid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;}
+      .form-group input,.form-group select,.form-group textarea{padding:12px !important;font-size:.88rem;min-height:44px;}
+      .admin-nav{position:fixed;top:0;right:0;width:280px;height:100vh;transform:translateX(100%);transition:transform .3s ease;z-index:1000;}
+      .admin-nav.mobile-open{transform:translateX(0);}
+      .admin-nav::before{content:'';position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .3s ease;z-index:-1;}
+      .admin-nav.mobile-open::before{opacity:1;pointer-events:auto;}
+    }
+    @media(max-width:480px){
+      .admin-main{padding:8px;}
+      .stats-grid{grid-template-columns:1fr;}
+      .act-btn{font-size:.7rem;}
+    }
   </style>
+
 </head>
 <body>
 <div class="admin-layout">
@@ -91,6 +118,9 @@
 
   <main class="admin-main">
     <div class="page-header">
+      <button class="admin-menu-btn" onclick="toggleAdminNav()">
+        <span></span><span></span><span></span>
+      </button>
       <div class="page-title" id="pageTitle">نظرة عامة</div>
       <div class="admin-badge"><div class="admin-dot"></div><span id="adminName">مشرف</span></div>
     </div>
@@ -161,7 +191,9 @@
 </div>
 
 <script>
-const API_BASE = window.location.origin + '/api';
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:8080/api'
+  : `${window.location.origin}/api`;
 const token = localStorage.getItem('token');
 const role  = localStorage.getItem('role');
 
@@ -186,6 +218,10 @@ function showSection(id, btn) {
   if (id==='attractions') loadAttractions();
   if (id==='reviews')     loadReviews();
   if (id==='users')       loadUsers();
+}
+
+function toggleAdminNav() {
+  document.querySelector('.admin-nav').classList.toggle('mobile-open');
 }
 
 // ── OVERVIEW ──────────────────────────────────
@@ -221,7 +257,7 @@ async function loadAttractions() {
         <thead><tr><th>الصورة</th><th>الاسم</th><th>التصنيف</th><th>التقييم</th><th>إجراءات</th></tr></thead>
         <tbody>${data.map(a=>`
           <tr>
-src="${window.location.origin}${a.imageUrl}"
+            <td>${a.imageUrl ? `<img src="${window.location.origin}${a.imageUrl}" class="img-thumb" onerror="this.style.display='none'">` : `<span style="font-size:1.4rem">${a.icon}</span>`}</td>
             <td><strong>${a.name}</strong><br><small style="color:var(--text-muted)">${a.nameEn}</small></td>
             <td><span class="badge ${a.category}">${cats[a.category]||a.category}</span></td>
             <td>★ ${a.ratingAvg?.toFixed(1)||'—'}</td>
@@ -251,7 +287,7 @@ function editAttraction(a) {
   document.getElementById('fFeatured').value = a.isFeatured ? 'true' : 'false';
   if (a.imageUrl) {
     const preview = document.getElementById('imgPreview');
-preview.src = `${window.location.origin}${a.imageUrl}`;
+    preview.src = `${window.location.origin}${a.imageUrl}`;
     preview.style.display = 'block';
   }
   document.querySelector('.add-form').scrollIntoView({ behavior: 'smooth' });

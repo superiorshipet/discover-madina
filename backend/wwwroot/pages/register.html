@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>إنشاء حساب | Discover Madina</title>
   <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="../css/style.css?v=2"/>
   <style>
     body{display:flex;align-items:center;justify-content:center;min-height:100vh;overflow:auto;padding:20px;}
     body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 70% 80%,rgba(74,144,217,.04),transparent 60%);pointer-events:none;}
@@ -54,7 +54,9 @@
   <a href="../index.html" class="back-link">← تصفح كضيف</a>
 </div>
 <script>
-const API_BASE = window.location.origin + '/api';
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:8080/api'
+  : `${window.location.origin}/api`;
 
 function showError(msg) {
   const el = document.getElementById('errorMsg');

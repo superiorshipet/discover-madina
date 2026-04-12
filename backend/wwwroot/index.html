@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/style.css?v=2" />
 </head>
 <body>
 
@@ -17,7 +17,7 @@
   <div class="splash-inner">
     <div class="splash-logo">
       <div class="logo-ring"></div>
-      <div class="logo-ring r2"></div>
+      <div class="logo-ring r2"></div>  
       <span class="logo-letter">م</span>
     </div>
     <h1 class="splash-title">اكتشف المدينة</h1>
@@ -31,6 +31,7 @@
 
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
 <div class="sidebar-header">
       <div class="brand">
         <div class="brand-icon">م</div>
