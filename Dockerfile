@@ -15,6 +15,7 @@ WORKDIR /app
 COPY --from=build /app/publish .
 COPY frontend/ ./wwwroot/
 
+# Do NOT hardcode ASPNETCORE_URLS here — Program.cs reads $PORT at runtime
 EXPOSE 8080
 
 ENTRYPOINT ["dotnet", "DiscoverMadina.dll"]

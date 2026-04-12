@@ -167,5 +167,14 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="js/data.js"></script>
 <script src="js/app.js"></script>
+<script>
+// Force splash hide 4s max
+setTimeout(() => {
+  const splash = document.getElementById('splash');
+  const app = document.getElementById('app');
+  if (splash) splash.remove();
+  if (app) app.style.display = 'flex';
+}, 4000);
+</script>
 </body>
 </html>

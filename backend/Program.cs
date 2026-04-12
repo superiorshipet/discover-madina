@@ -8,9 +8,13 @@ using DiscoverMadina.Repositories.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ── PORT — must be set BEFORE builder.Build() ─────────────────────────────────
+// Railway injects PORT (e.g. 3000, 8080, random). We bind to 0.0.0.0:$PORT.
+// Locally PORT is not set so we default to 8080.
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
 // ── DATABASE ──────────────────────────────────────────────────────────────────
-// On Railway: PGHOST is injected by the PostgreSQL plugin → use Npgsql
-// Locally:    PGHOST is absent → use SQLite from appsettings.json
 var pgHost = Environment.GetEnvironmentVariable("PGHOST");
 var isPostgres = !string.IsNullOrEmpty(pgHost);
 
@@ -21,18 +25,13 @@ if (isPostgres)
     var pgUser     = Environment.GetEnvironmentVariable("PGUSER")     ?? "postgres";
     var pgPassword = Environment.GetEnvironmentVariable("PGPASSWORD") ?? "";
 
-    var connectionString =
-        $"Host={pgHost};Port={pgPort};Database={pgDb};Username={pgUser};Password={pgPassword};SSL Mode=Require;Trust Server Certificate=true;";
-
-    builder.Services.AddDbContext<AppDbContext>(opt =>
-        opt.UseNpgsql(connectionString));
+    var connStr = $"Host={pgHost};Port={pgPort};Database={pgDb};Username={pgUser};Password={pgPassword};SSL Mode=Require;Trust Server Certificate=true;";
+    builder.Services.AddDbContext<AppDbContext>(opt => opt.UseNpgsql(connStr));
 }
 else
 {
-    var sqliteConn = builder.Configuration.GetConnectionString("Default")
-                     ?? "Data Source=discover_madina.db";
-    builder.Services.AddDbContext<AppDbContext>(opt =>
-        opt.UseSqlite(sqliteConn));
+    var sqliteConn = builder.Configuration.GetConnectionString("Default") ?? "Data Source=discover_madina.db";
+    builder.Services.AddDbContext<AppDbContext>(opt => opt.UseSqlite(sqliteConn));
 }
 
 // ── REPOSITORIES ──────────────────────────────────────────────────────────────
@@ -42,7 +41,7 @@ builder.Services.AddScoped<IUserRepository,       UserRepository>();
 
 builder.Services.AddHttpClient();
 
-// ── JWT AUTH ──────────────────────────────────────────────────────────────────
+// ── JWT ───────────────────────────────────────────────────────────────────────
 var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY")
              ?? builder.Configuration["Jwt:Key"]
              ?? "DiscoverMadinaSecretKey2025!";
@@ -54,9 +53,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience         = true,
             ValidateLifetime         = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer   = builder.Configuration["Jwt:Issuer"]   ?? "DiscoverMadina",
-            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "DiscoverMadinaUsers",
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+            ValidIssuer              = builder.Configuration["Jwt:Issuer"]   ?? "DiscoverMadina",
+            ValidAudience            = builder.Configuration["Jwt:Audience"] ?? "DiscoverMadinaUsers",
+            IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };
     });
 
@@ -68,16 +67,9 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>
     p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
-// ── PORT ──────────────────────────────────────────────────────────────────────
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
-
 var app = builder.Build();
 
-// ── DATABASE INIT ON STARTUP ──────────────────────────────────────────────────
-// PostgreSQL: EnsureCreated() builds schema directly from the model.
-//             The existing migrations are SQLite-specific and would fail on PG.
-// SQLite:     Migrate() applies the existing migration files as normal.
+// ── DB INIT ───────────────────────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope()) {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     if (isPostgres)
@@ -86,17 +78,16 @@ using (var scope = app.Services.CreateScope()) {
         db.Database.Migrate();
 }
 
-// ── MIDDLEWARE PIPELINE ───────────────────────────────────────────────────────
+// ── PIPELINE ──────────────────────────────────────────────────────────────────
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseDefaultFiles();
-app.UseStaticFiles();   // serves /wwwroot (frontend + uploaded images)
+app.UseStaticFiles();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapControllers();   // only once
+app.MapControllers();
 
-// ── ENSURE UPLOADS DIR EXISTS ─────────────────────────────────────────────────
 var uploadsDir = Path.Combine(app.Environment.WebRootPath ?? "wwwroot", "uploads");
 Directory.CreateDirectory(uploadsDir);
 
