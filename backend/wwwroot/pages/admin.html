@@ -62,7 +62,7 @@
     .section{display:none;}
     .section.active{display:block;}
     .loading{color:var(--text-muted);font-size:.88rem;padding:20px;text-align:center;}
-    .img-thumb{width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid var(--border);}
+    .img-thumb{width:50px;height:50px;border-radius:8px;object-fit:cover;border:1px solid var(--border);}
     .img-upload-wrap{border:2px dashed var(--border);border-radius:var(--radius-sm);padding:20px;text-align:center;cursor:pointer;transition:border-color .2s;}
     .img-upload-wrap:hover{border-color:var(--gold-dim);}
     .img-preview{max-width:100%;max-height:120px;border-radius:8px;margin-top:10px;display:none;}
@@ -71,6 +71,15 @@
     .footer-btn{padding:10px;border-radius:var(--radius-sm);background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted);font-family:'Cairo',sans-serif;font-size:.85rem;text-decoration:none;text-align:center;transition:all .2s;cursor:pointer;}
     .footer-btn:hover{border-color:var(--gold-dim);color:var(--gold);}
     .info-text{color:var(--text-muted);font-size:.8rem;margin-top:10px;padding:10px;background:var(--bg-raised);border-radius:var(--radius-sm);}
+    .photos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:10px;margin-top:10px;}
+    .photo-item{position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--border);}
+    .photo-item img{width:100%;height:70px;object-fit:cover;display:block;}
+    .photo-item.primary{border:2px solid var(--gold);}
+    .photo-actions{position:absolute;bottom:0;left:0;right:0;display:flex;background:rgba(0,0,0,0.7);}
+    .photo-actions button{flex:1;padding:4px;font-size:.65rem;background:none;border:none;color:white;cursor:pointer;}
+    .photo-actions button:hover{background:rgba(201,168,76,0.5);}
+    .primary-badge{position:absolute;top:4px;right:4px;background:var(--gold);color:var(--bg-deep);font-size:.6rem;padding:2px 6px;border-radius:4px;font-weight:700;}
+    .photo-counter-badge{display:inline-block;background:var(--bg-raised);padding:2px 8px;border-radius:12px;font-size:.7rem;margin-left:6px;}
     @media(max-width:768px){.admin-nav{display:none}.form-grid{grid-template-columns:1fr}}
   </style>
 </head>
@@ -139,14 +148,6 @@
             <select id="fFeatured"><option value="true">نعم</option><option value="false">لا</option></select>
           </div>
           <div class="form-group form-full"><label>الوصف</label><textarea id="fDesc" placeholder="وصف مختصر..."></textarea></div>
-          <div class="form-group form-full">
-            <label>صورة المكان</label>
-            <div class="img-upload-wrap" onclick="document.getElementById('fImage').click()">
-              <div id="imgPlaceholder">📷 اضغط لاختيار صورة (JPG, PNG, WEBP - أقل من 5MB)</div>
-              <img id="imgPreview" class="img-preview"/>
-            </div>
-            <input type="file" id="fImage" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="previewImage(this)"/>
-          </div>
         </div>
         <div class="form-actions">
           <button class="btn-main" onclick="saveAttraction()">💾 حفظ</button>
@@ -154,6 +155,28 @@
         </div>
       </div>
       <div id="attractionsTable" class="loading">جاري التحميل...</div>
+    </div>
+
+    <!-- PHOTO MANAGEMENT MODAL -->
+    <div id="photoModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:1000;align-items:center;justify-content:center;" onclick="closePhotoModal()">
+      <div style="background:var(--bg-mid);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()">
+        <h3 style="font-family:'Amiri',serif;color:var(--text-main);margin-bottom:16px">📸 إدارة الصور - <span id="photoModalTitle"></span></h3>
+        <input type="hidden" id="currentAttractionId"/>
+        
+        <div style="margin-bottom:16px;">
+          <label style="display:block;margin-bottom:8px;color:var(--text-muted);">رفع صور جديدة (حد أقصى 5 صور)</label>
+          <input type="file" id="multiPhotoUpload" accept="image/jpeg,image/png,image/webp" multiple style="display:none;" onchange="uploadMultiplePhotos()"/>
+          <button class="btn-main" style="width:100%;" onclick="document.getElementById('multiPhotoUpload').click()">📷 اختر صور</button>
+          <div class="info-text">يمكنك رفع حتى 5 صور. الصورة الأولى تكون الرئيسية.</div>
+        </div>
+        
+        <h4 style="color:var(--text-main);margin:20px 0 12px;">الصور الحالية</h4>
+        <div id="photosGrid" class="photos-grid"></div>
+        
+        <div style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end;">
+          <button class="modal-btn" onclick="closePhotoModal()">إغلاق</button>
+        </div>
+      </div>
     </div>
 
     <!-- REVIEWS SECTION -->
@@ -201,27 +224,25 @@
 </div>
 
 <script>
-const API_BASE = window.location.origin + '/api';
-const token = localStorage.getItem('token');
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:8080/api'
+  : `${window.location.origin}/api`;
+  const token = localStorage.getItem('token');
 const role  = localStorage.getItem('role');
 const currentUsername = localStorage.getItem('username');
 
-// Auth guard - admin or superadmin only
+// Auth guard
 if (!token || (role !== 'admin' && role !== 'superadmin')) {
   alert('يجب تسجيل الدخول كمشرف أولاً');
   window.location.href = 'login.html';
 }
 
-// Check if superadmin and show/hide admins section
 const isSuperAdmin = role === 'superadmin';
 document.getElementById('adminsNavBtn').style.display = isSuperAdmin ? 'flex' : 'none';
 document.getElementById('adminName').textContent = currentUsername + (isSuperAdmin ? ' (مشرف عام)' : ' (مشرف)') || 'مشرف';
 
 function authHeaders() {
-  return { 
-    'Content-Type': 'application/json', 
-    'Authorization': `Bearer ${token}` 
-  };
+  return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 }
 
 function showSection(id, btn) {
@@ -239,16 +260,134 @@ function showSection(id, btn) {
   };
   document.getElementById('pageTitle').textContent = titles[id] || id;
   
-  // Load data based on section
   if (id==='attractions') loadAttractions();
   if (id==='reviews') loadReviews();
   if (id==='users') loadUsers();
   if (id==='admins') loadAdmins();
 }
 
-// ──────────────────────────────────────────────
-// OVERVIEW
-// ──────────────────────────────────────────────
+// Photo Modal
+let currentPhotoAttractionId = null;
+
+function openPhotoModal(attractionId, attractionName) {
+  currentPhotoAttractionId = attractionId;
+  document.getElementById('photoModalTitle').textContent = attractionName;
+  document.getElementById('currentAttractionId').value = attractionId;
+  document.getElementById('photoModal').style.display = 'flex';
+  loadPhotosGrid(attractionId);
+}
+
+function closePhotoModal() {
+  document.getElementById('photoModal').style.display = 'none';
+  currentPhotoAttractionId = null;
+  loadAttractions(); // Refresh the table
+}
+
+async function loadPhotosGrid(attractionId) {
+  const grid = document.getElementById('photosGrid');
+  grid.innerHTML = '<div class="loading">جاري تحميل الصور...</div>';
+  
+  try {
+    const res = await fetch(`${API_BASE}/attractions/${attractionId}`, {headers: authHeaders()});
+    const data = await res.json();
+    const photos = data.photos || [];
+    
+    if (photos.length === 0) {
+      grid.innerHTML = '<div class="loading" style="grid-column:1/-1;">لا توجد صور لهذا المكان</div>';
+      return;
+    }
+    
+    grid.innerHTML = photos.map(p => `
+      <div class="photo-item ${p.isPrimary ? 'primary' : ''}">
+        <img src="${window.location.origin}${p.imageUrl}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🖼️</text></svg>'">
+        ${p.isPrimary ? '<div class="primary-badge">⭐ رئيسية</div>' : ''}
+        <div class="photo-actions">
+          ${!p.isPrimary ? `<button onclick="setPrimaryPhoto(${p.id})" title="تعيين كصورة رئيسية">⭐</button>` : ''}
+          <button onclick="deletePhoto(${p.id})" title="حذف" style="color:var(--red);">🗑️</button>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) {
+    grid.innerHTML = '<div class="loading">❌ خطأ في تحميل الصور</div>';
+  }
+}
+
+async function uploadMultiplePhotos() {
+  const input = document.getElementById('multiPhotoUpload');
+  const files = Array.from(input.files);
+  
+  if (files.length === 0) return;
+  if (files.length > 5) {
+    showToast('⚠️ الحد الأقصى 5 صور');
+    input.value = '';
+    return;
+  }
+  
+  const attractionId = document.getElementById('currentAttractionId').value;
+  showToast(`⏳ جاري رفع ${files.length} صور...`);
+  
+  const formData = new FormData();
+  files.forEach(file => formData.append('photos', file));
+  
+  try {
+    const res = await fetch(`${API_BASE}/attractions/${attractionId}/photos`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData
+    });
+    
+    if (res.ok) {
+      showToast('✅ تم رفع الصور بنجاح');
+      input.value = '';
+      loadPhotosGrid(attractionId);
+    } else {
+      const err = await res.json();
+      showToast('❌ ' + (err.error || 'فشل رفع الصور'));
+    }
+  } catch(e) {
+    showToast('❌ خطأ في الاتصال');
+  }
+}
+
+async function setPrimaryPhoto(photoId) {
+  try {
+    const res = await fetch(`${API_BASE}/attractions/photos/${photoId}/primary`, {
+      method: 'PATCH',
+      headers: authHeaders()
+    });
+    
+    if (res.ok) {
+      showToast('✅ تم تعيين الصورة كرئيسية');
+      loadPhotosGrid(currentPhotoAttractionId);
+    } else {
+      showToast('❌ فشل تعيين الصورة');
+    }
+  } catch(e) {
+    showToast('❌ خطأ في الاتصال');
+  }
+}
+
+async function deletePhoto(photoId) {
+  if (!confirm('هل أنت متأكد من حذف هذه الصورة؟')) return;
+  
+  try {
+    const res = await fetch(`${API_BASE}/attractions/photos/${photoId}`, {
+      method: 'DELETE',
+      headers: authHeaders()
+    });
+    
+    if (res.ok) {
+      showToast('✅ تم حذف الصورة');
+      loadPhotosGrid(currentPhotoAttractionId);
+    } else {
+      showToast('❌ فشل حذف الصورة');
+    }
+  } catch(e) {
+    showToast('❌ خطأ في الاتصال');
+  }
+}
+
+// Overview
 async function loadOverview() {
   try {
     const res = await fetch(`${API_BASE}/attractions/stats`, {headers: authHeaders()});
@@ -264,24 +403,22 @@ async function loadOverview() {
     const cats = {religious:'ديني',cultural:'ثقافي',entertainment:'ترفيه',dining:'مطاعم'};
     document.getElementById('recentAttractions').innerHTML = atts.length ? `
       <table class="data-table">
-        <thead><tr><th>المكان</th><th>التصنيف</th><th>التقييم</th></tr></thead>
+        <thead><tr><th>المكان</th><th>التصنيف</th><th>الصور</th><th>التقييم</th></tr></thead>
         <tbody>${atts.map(a=>`
           <tr>
             <td><strong>${a.icon} ${a.name}</strong></td>
             <td><span class="badge ${a.category}">${cats[a.category] || a.category}</span></td>
+            <td>${a.photos?.length || 0} صور</td>
             <td>★ ${a.ratingAvg?.toFixed(1)||'—'}</td>
           </tr>`).join('')}
         </tbody>
       </table>` : '<div class="loading">لا توجد أماكن حديثة</div>';
   } catch(e) {
     console.error('Overview error:', e);
-    document.getElementById('recentAttractions').innerHTML = '<div class="loading">❌ خطأ في تحميل البيانات</div>';
   }
 }
 
-// ──────────────────────────────────────────────
-// ATTRACTIONS
-// ──────────────────────────────────────────────
+// Attractions
 async function loadAttractions() {
   document.getElementById('attractionsTable').innerHTML = '<div class="loading">جاري التحميل...</div>';
   try {
@@ -291,16 +428,17 @@ async function loadAttractions() {
     
     document.getElementById('attractionsTable').innerHTML = `
       <table class="data-table">
-        <thead><tr><th>الصورة</th><th>الاسم</th><th>التصنيف</th><th>التقييم</th><th>إجراءات</th></tr></thead>
+        <thead><tr><th>الصورة</th><th>الاسم</th><th>التصنيف</th><th>الصور</th><th>التقييم</th><th>إجراءات</th></tr></thead>
         <tbody>${data.map(a=>`
           <tr>
             <td>${a.imageUrl ? `<img src="${window.location.origin}${a.imageUrl}" class="img-thumb" onerror="this.style.display='none'">` : `<span style="font-size:1.4rem">${a.icon}</span>`}</td>
             <td><strong>${a.name}</strong><br><small style="color:var(--text-muted)">${a.nameEn}</small></td>
             <td><span class="badge ${a.category}">${cats[a.category]||a.category}</span></td>
+            <td><span class="photo-counter-badge">📸 ${a.photos?.length || 0}</span></td>
             <td>★ ${a.ratingAvg?.toFixed(1)||'—'}</td>
             <td><div class="action-btns">
               <button class="act-btn" onclick='editAttraction(${JSON.stringify(a).replace(/'/g, "&apos;")})'>✏️ تعديل</button>
-              <button class="act-btn" onclick="uploadAttractionImage(${a.id})">📷 صورة</button>
+              <button class="act-btn" onclick="openPhotoModal(${a.id}, '${a.name.replace(/'/g, "\\'")}')">📷 الصور</button>
               <button class="act-btn danger" onclick="deleteAttraction(${a.id})">🗑️ حذف</button>
             </div></td>
           </tr>`).join('')}
@@ -322,13 +460,6 @@ function editAttraction(a) {
   document.getElementById('fHours').value = a.openingHours || '';
   document.getElementById('fDesc').value = a.description || '';
   document.getElementById('fFeatured').value = a.isFeatured ? 'true' : 'false';
-  
-  if (a.imageUrl) {
-    const preview = document.getElementById('imgPreview');
-    preview.src = `${window.location.origin}${a.imageUrl}`;
-    preview.style.display = 'block';
-    document.getElementById('imgPlaceholder').textContent = 'الصورة الحالية';
-  }
   
   document.querySelector('.add-form').scrollIntoView({ behavior: 'smooth' });
   showToast('✅ تم تحميل بيانات المكان للتعديل');
@@ -359,19 +490,7 @@ async function saveAttraction() {
     const method = id ? 'PUT' : 'POST';
     const res = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(body) });
     if (!res.ok) throw new Error();
-    const saved = await res.json();
-
-    const imageFile = document.getElementById('fImage').files[0];
-    if (imageFile && saved.id) {
-      const fd = new FormData();
-      fd.append('image', imageFile);
-      await fetch(`${API_BASE}/attractions/${saved.id}/image`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: fd
-      });
-    }
-
+    
     showToast('✅ تم الحفظ بنجاح');
     clearForm();
     loadAttractions();
@@ -393,60 +512,14 @@ async function deleteAttraction(id) {
   }
 }
 
-async function uploadAttractionImage(id) {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'image/jpeg,image/png,image/webp';
-  input.onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const fd = new FormData();
-    fd.append('image', file);
-    try {
-      const res = await fetch(`${API_BASE}/attractions/${id}/image`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: fd
-      });
-      if (res.ok) {
-        showToast('✅ تم رفع الصورة');
-        loadAttractions();
-      } else {
-        showToast('❌ فشل رفع الصورة');
-      }
-    } catch(e) {
-      showToast('❌ خطأ في الاتصال');
-    }
-  };
-  input.click();
-}
-
-function previewImage(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const preview = document.getElementById('imgPreview');
-    preview.src = e.target.result;
-    preview.style.display = 'block';
-    document.getElementById('imgPlaceholder').textContent = file.name;
-  };
-  reader.readAsDataURL(file);
-}
-
 function clearForm() {
   document.getElementById('editId').value = '';
   ['fName','fNameEn','fIcon','fLat','fLng','fHours','fDesc'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('fCategory').value = 'religious';
   document.getElementById('fFeatured').value = 'true';
-  document.getElementById('fImage').value = '';
-  document.getElementById('imgPreview').style.display = 'none';
-  document.getElementById('imgPlaceholder').textContent = '📷 اضغط لاختيار صورة';
 }
 
-// ──────────────────────────────────────────────
-// REVIEWS
-// ──────────────────────────────────────────────
+// Reviews
 async function loadReviews() {
   document.getElementById('reviewsList').innerHTML = '<div class="loading">جاري التحميل...</div>';
   try {
@@ -495,9 +568,7 @@ async function updateReview(id, status) {
   }
 }
 
-// ──────────────────────────────────────────────
-// USERS
-// ──────────────────────────────────────────────
+// Users
 async function loadUsers() {
   document.getElementById('usersList').innerHTML = '<div class="loading">جاري التحميل...</div>';
   try {
@@ -536,9 +607,7 @@ async function deleteUser(id) {
   }
 }
 
-// ──────────────────────────────────────────────
-// ADMINS (Super Admin Only)
-// ──────────────────────────────────────────────
+// Admins (Super Admin Only)
 async function loadAdmins() {
   if (!isSuperAdmin) {
     document.getElementById('adminsList').innerHTML = '<div class="loading">🔒 هذه الصفحة للمشرف العام فقط</div>';
@@ -645,9 +714,7 @@ async function deleteAdmin(id, role) {
   }
 }
 
-// ──────────────────────────────────────────────
-// UTILITIES
-// ──────────────────────────────────────────────
+// Utilities
 function logout() {
   localStorage.clear();
   window.location.href = 'login.html';
@@ -670,7 +737,7 @@ function showToast(msg) {
 // Initialize
 loadOverview();
 
-// Check token validity periodically
+// Auth check
 setInterval(async () => {
   try {
     const res = await fetch(`${API_BASE}/auth/me`, {headers: authHeaders()});
@@ -681,8 +748,7 @@ setInterval(async () => {
   } catch(e) {
     console.error('Auth check failed');
   }
-}, 60000); // Check every minute
-
+}, 60000);
 </script>
 </body>
 </html>

@@ -3,7 +3,9 @@
 // Replace with API calls to .NET backend
 // ============================================
 
-const API_BASE = window.location.origin + '/api';
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:8080/api'
+  : `${window.location.origin}/api`;
 // Mock data removed - use only DB
 const PLACES = [
   {

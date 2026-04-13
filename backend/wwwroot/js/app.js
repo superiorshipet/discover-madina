@@ -1,27 +1,39 @@
 // ============================================
 // DISCOVER MADINA — Main App Logic
 // ============================================
+
 let map, markers = [], currentFilter = 'all', currentPlace = null, currentRating = 0;
 let chatbotOpen = false;
 let chatHistory = [];
+
+// Routing state
 let userLocation = null;
 let userLocationMarker = null;
 let routeLayer = null;
 
-// ── AUTH ──────────────────────────────────────
+// Gallery state
+let currentPhotoIndex = 0;
+let currentPhotos = [];
+
+// Auth functions
 function getToken()    { return localStorage.getItem('token'); }
 function getUsername() { return localStorage.getItem('username'); }
 function getRole()     { return localStorage.getItem('role') || 'guest'; }
-function isLoggedIn()  { return getRole() !== null; }
+function isLoggedIn()  { return getRole() !== 'guest' && getToken(); }
 function isAdmin()     { return getRole() === 'admin' || getRole() === 'superadmin'; }
 
 function toggleAdminBtn() {
   const adminBtn = document.getElementById('adminBtn');
-  if (adminBtn) adminBtn.classList.toggle('hidden', !isAdmin());
+  if (adminBtn) {
+    adminBtn.classList.toggle('hidden', !isAdmin());
+  }
 }
 
 function initAuthGuard() {
-  if (!localStorage.getItem('role')) localStorage.setItem('role', 'guest');
+  const role = getRole();
+  if (!localStorage.getItem('role')) {
+    localStorage.setItem('role', 'guest');
+  }
   const splash = document.getElementById('splash');
   if (splash) splash.classList.add('hidden');
   toggleAdminBtn();
@@ -40,7 +52,7 @@ function authFetch(url, options = {}) {
   });
 }
 
-// ── INIT ──────────────────────────────────────
+// Initialize
 document.addEventListener('DOMContentLoaded', async () => {
   if (!initAuthGuard()) return;
 
@@ -50,8 +62,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const loginBtn = document.getElementById('loginBtn');
   if (loginBtn) {
     if (isLoggedIn() && username) {
-      loginBtn.innerHTML = `🔐 تسجيل الخروج (${username})`;
+      loginBtn.innerHTML = `🚪 تسجيل الخروج (${username})`;
       loginBtn.onclick = logout;
+      loginBtn.href = '#';
     } else {
       loginBtn.textContent = '🔐 تسجيل الدخول';
       loginBtn.href = 'pages/login.html';
@@ -66,18 +79,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     welcomeMsg.style.display = 'block';
   }
 
-  const userBtn = document.querySelector('.icon-btn[title="حسابي"]');
-  if (userBtn && username && role !== 'guest') {
-    userBtn.textContent = username[0].toUpperCase();
-    userBtn.title = username;
-    userBtn.style.background = 'linear-gradient(135deg,var(--gold-dim),var(--gold))';
-    userBtn.style.color = 'var(--bg-deep)';
-    userBtn.style.fontWeight = '700';
-    userBtn.style.fontSize = '.85rem';
-    userBtn.href = '#';
-    userBtn.onclick = (e) => { e.preventDefault(); showUserMenu(); };
-  }
-
   toggleAdminBtn();
   initMap();
 
@@ -87,9 +88,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('App init error:', e);
   }
 
-  // ✅ Single interval — not inside loadAttractionsFromAPI
-  setInterval(loadAttractionsFromAPI, 30000);
-
   setTimeout(() => {
     const splash = document.getElementById('splash');
     if (splash) {
@@ -97,21 +95,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       setTimeout(() => { if (map) map.invalidateSize(true); }, 100);
     }
   }, 100);
-
-  // Close sidebar when clicking outside on mobile
-  document.addEventListener('click', (e) => {
-    const sidebar = document.getElementById('sidebar');
-    const menuBtn = document.querySelector('.menu-btn');
-    if (sidebar && sidebar.classList.contains('mobile-open')) {
-      if (!sidebar.contains(e.target) && !menuBtn?.contains(e.target)) {
-        sidebar.classList.remove('mobile-open');
-        setTimeout(() => { if (map) map.invalidateSize(); }, 220);
-      }
-    }
-  });
 });
 
-// ── MAP ───────────────────────────────────────
+// Map initialization
 function initMap() {
   map = L.map('map', { zoomControl: false, attributionControl: false }).setView([24.4672, 39.6111], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
@@ -119,7 +105,7 @@ function initMap() {
   window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
 }
 
-// ── LOAD FROM API ─────────────────────────────
+// Load attractions from API
 async function loadAttractionsFromAPI() {
   try {
     const res = await fetch(`${API_BASE}/attractions`);
@@ -132,6 +118,7 @@ async function loadAttractionsFromAPI() {
           lat: parseFloat(a.latitude), lng: parseFloat(a.longitude),
           rating: a.ratingAvg || 0, reviews: 0, hours: a.openingHours,
           description: a.description, imageUrl: a.imageUrl,
+          photos: a.photos || [],
           tags: [a.category], featured: a.isFeatured
         }));
         renderPlacesList(window.LIVE_PLACES);
@@ -163,14 +150,15 @@ function renderMarkers(places) {
   });
 }
 
-// ── SIDEBAR TOGGLE ────────────────────────────
+// Sidebar
 function toggleSidebar() {
-  const sidebar = document.getElementById('sidebar');
-  sidebar.classList.toggle('mobile-open');
-  setTimeout(() => { if (map) map.invalidateSize(); }, 220);
+  if (window.innerWidth <= 768) {
+    document.getElementById('sidebar').classList.toggle('mobile-open');
+    setTimeout(() => map.invalidateSize(), 220);
+  }
 }
 
-// ── FILTER ────────────────────────────────────
+// Filter
 function filterCat(btn, cat) {
   currentFilter = cat;
   document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
@@ -196,7 +184,7 @@ function applyFilter() {
 }
 function doSearch() { applyFilter(); }
 
-// ── PLACES LIST ───────────────────────────────
+// Places list
 function renderPlacesList(places) {
   const el = document.getElementById('placesList');
   if (!places.length) {
@@ -206,7 +194,7 @@ function renderPlacesList(places) {
   el.innerHTML = places.map(p => `
     <div class="place-card" onclick="openDetailById(${p.id})">
       <div class="pc-icon ${p.category}">${p.imageUrl
-        ? `<img src="${window.location.origin}${p.imageUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" onerror="this.parentElement.textContent='${p.icon}'">`
+        ? `<img src="${window.location.origin}${p.imageUrl}" onerror="this.parentElement.textContent='${p.icon}'">`
         : p.icon}</div>
       <div class="pc-body">
         <div class="pc-name">${p.name}</div>
@@ -229,7 +217,7 @@ function renderBottomSheet(places) {
   `).join('');
 }
 
-// ── DETAIL PANEL ──────────────────────────────
+// Detail panel with gallery
 function openDetailById(id) {
   const place = getActivePlaces().find(p => p.id === id);
   if (place) openDetail(place);
@@ -237,47 +225,114 @@ function openDetailById(id) {
 
 function openDetail(place) {
   currentPlace = place;
+  currentPhotos = place.photos || [];
+  currentPhotoIndex = 0;
+  
+  updateDetailContent();
+  document.getElementById('detailPanel').classList.add('open');
+  map.setView([place.lat, place.lng], 15, { animate: true });
+  clearRoute();
+}
+
+function updateDetailContent() {
+  const place = currentPlace;
   const imgEl = document.getElementById('detailImg');
-  if (place.imageUrl) {
-    imgEl.innerHTML = `<img src="${window.location.origin}${place.imageUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.textContent='${place.icon}'">`;
+  
+  if (currentPhotos.length > 0) {
+    renderGallery();
+  } else if (place.imageUrl) {
+    imgEl.innerHTML = `<img src="${window.location.origin}${place.imageUrl}" onerror="this.parentElement.textContent='${place.icon}'">`;
   } else {
     imgEl.textContent = place.icon;
   }
+  
   document.getElementById('detailCat').textContent = CATEGORY_LABELS[place.category];
   document.getElementById('detailName').textContent = place.name;
   document.getElementById('detailRating').textContent = `★ ${place.rating}`;
   document.getElementById('detailHours').textContent = `⏰ ${place.hours}`;
   document.getElementById('detailDesc').textContent = place.description;
-  document.getElementById('detailPanel').classList.add('open');
-  map.setView([place.lat, place.lng], 15, { animate: true });
-  clearRoute();
+}
+
+function renderGallery() {
+  const imgEl = document.getElementById('detailImg');
+  const currentPhoto = currentPhotos[currentPhotoIndex];
+  
+  let html = `
+    <div style="position:relative;width:100%;height:100%;">
+      <img src="${currentPhoto.imageUrl}" 
+           style="width:100%;height:100%;object-fit:cover;" 
+           onerror="this.parentElement.parentElement.textContent='${currentPlace.icon}'">
+  `;
+  
+  if (currentPhotos.length > 1) {
+    html += `
+      <button class="gallery-nav prev" onclick="prevPhoto()">←</button>
+      <button class="gallery-nav next" onclick="nextPhoto()">→</button>
+      <div class="photo-counter">${currentPhotoIndex + 1} / ${currentPhotos.length}</div>
+      <div class="gallery-dots">
+        ${currentPhotos.map((_, i) => `
+          <div class="gallery-dot ${i === currentPhotoIndex ? 'active' : ''}" onclick="goToPhoto(${i})"></div>
+        `).join('')}
+      </div>
+    `;
+  }
+  
+  html += '</div>';
+  imgEl.innerHTML = html;
+}
+
+function nextPhoto() {
+  if (currentPhotos.length > 0) {
+    currentPhotoIndex = (currentPhotoIndex + 1) % currentPhotos.length;
+    renderGallery();
+  }
+}
+
+function prevPhoto() {
+  if (currentPhotos.length > 0) {
+    currentPhotoIndex = (currentPhotoIndex - 1 + currentPhotos.length) % currentPhotos.length;
+    renderGallery();
+  }
+}
+
+function goToPhoto(index) {
+  if (currentPhotos.length > 0 && index >= 0 && index < currentPhotos.length) {
+    currentPhotoIndex = index;
+    renderGallery();
+  }
 }
 
 function closeDetail() {
   document.getElementById('detailPanel').classList.remove('open');
   clearRoute();
   currentPlace = null;
+  currentPhotos = [];
+  currentPhotoIndex = 0;
 }
 
-// ── GEOLOCATION ───────────────────────────────
+// Geolocation
 function locateUser() {
   if (!navigator.geolocation) { showToast('الموقع غير مدعوم في هذا المتصفح'); return; }
   showToast('📍 جاري تحديد موقعك...');
+
   navigator.geolocation.getCurrentPosition(
     pos => {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
       userLocation = { lat, lng };
+
       if (userLocationMarker) map.removeLayer(userLocationMarker);
+
       userLocationMarker = L.marker([lat, lng], {
         icon: L.divIcon({
           html: `<div style="position:relative;width:22px;height:22px;">
-            <div style="position:absolute;top:0;left:0;width:22px;height:22px;border-radius:50%;background:rgba(74,144,217,0.25);animation:userPulse 1.8s ease-out infinite;"></div>
-            <div style="position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#4A90D9;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);"></div>
-          </div>`,
+              <div style="position:absolute;top:0;left:0;width:22px;height:22px;border-radius:50%;background:rgba(74,144,217,0.25);animation:userPulse 1.8s ease-out infinite;"></div>
+              <div style="position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#4A90D9;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);"></div>
+            </div>`,
           className: '', iconSize: [22, 22], iconAnchor: [11, 11]
         })
       }).addTo(map).bindPopup('📍 أنت هنا').openPopup();
+
       map.setView([lat, lng], 15, { animate: true });
       showToast('✅ تم تحديد موقعك — اضغط "اتجاهاتي" لأي مكان');
     },
@@ -289,9 +344,10 @@ function locateUser() {
   );
 }
 
-// ── DIRECTIONS ────────────────────────────────
+// Directions
 async function getDirections() {
   if (!currentPlace) return;
+
   if (!userLocation) {
     showToast('📍 يتم تحديد موقعك أولاً...');
     navigator.geolocation.getCurrentPosition(
@@ -319,19 +375,33 @@ async function getDirections() {
 
 async function drawRoute() {
   if (!userLocation || !currentPlace) return;
+
   clearRoute();
   showToast('🗺️ جاري حساب أقصر طريق...');
+
+  const start = [userLocation.lng, userLocation.lat];
+  const end   = [currentPlace.lng, currentPlace.lat];
+
   try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${userLocation.lng},${userLocation.lat};${currentPlace.lng},${currentPlace.lat}?overview=full&geometries=geojson`;
+    const url = `https://router.project-osrm.org/route/v1/driving/${start[0]},${start[1]};${end[0]},${end[1]}?overview=full&geometries=geojson`;
     const res = await fetch(url);
     if (!res.ok) throw new Error('Route service error');
     const data = await res.json();
-    if (!data.routes || data.routes.length === 0) { showToast('⚠️ لم يتم العثور على مسار'); return; }
+
+    if (!data.routes || data.routes.length === 0) {
+      showToast('⚠️ لم يتم العثور على مسار');
+      return;
+    }
+
     const route = data.routes[0];
     const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
     const distKm  = (route.distance / 1000).toFixed(1);
     const distMin = Math.round(route.duration / 60);
-    routeLayer = L.polyline(coords, { color: '#4A90D9', weight: 5, opacity: 0.85, lineJoin: 'round', lineCap: 'round' }).addTo(map);
+
+    routeLayer = L.polyline(coords, {
+      color: '#4A90D9', weight: 5, opacity: 0.85, lineJoin: 'round', lineCap: 'round'
+    }).addTo(map);
+
     map.fitBounds(routeLayer.getBounds(), { padding: [60, 60] });
     showRouteBanner(distKm, distMin);
   } catch (e) {
@@ -349,25 +419,26 @@ function clearRoute() {
 function showRouteBanner(distKm, distMin) {
   const old = document.getElementById('routeBanner');
   if (old) old.remove();
+
   const banner = document.createElement('div');
   banner.id = 'routeBanner';
-  banner.style.cssText = `position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--bg-mid,#1e2330);border:1px solid var(--border,#2e3547);border-radius:16px;padding:12px 20px;display:flex;align-items:center;gap:16px;z-index:800;box-shadow:0 4px 20px rgba(0,0,0,0.5);direction:rtl;font-family:'Cairo',sans-serif;min-width:260px;`;
+  banner.style.cssText = `position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--bg-mid);border:1px solid var(--border);border-radius:16px;padding:12px 20px;display:flex;align-items:center;gap:16px;z-index:800;box-shadow:0 4px 20px rgba(0,0,0,0.5);direction:rtl;font-family:'Cairo',sans-serif;min-width:260px;`;
   banner.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-size:1rem;font-weight:700;color:var(--gold,#2ECC8A);">🗺️ ${distKm} كم</span>
-      <span style="font-size:.8rem;color:var(--text-muted,#8899aa);">⏱ ${distMin} دقيقة تقريباً</span>
+      <span style="font-size:1rem;font-weight:700;color:var(--gold);">🗺️ ${distKm} كم</span>
+      <span style="font-size:.8rem;color:var(--text-muted);">⏱ ${distMin} دقيقة تقريباً</span>
     </div>
-    <div style="width:1px;height:36px;background:var(--border,#2e3547);"></div>
-    <div style="font-size:.82rem;color:var(--text,#cdd6f4);flex:1;">إلى <strong>${currentPlace.name}</strong></div>
-    <button onclick="clearRoute()" style="background:none;border:none;color:var(--text-muted,#8899aa);font-size:1.1rem;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
+    <div style="width:1px;height:36px;background:var(--border);"></div>
+    <div style="font-size:.82rem;color:var(--text-main);flex:1;">إلى <strong>${currentPlace.name}</strong></div>
+    <button onclick="clearRoute()" style="background:none;border:none;color:var(--text-muted);font-size:1.1rem;cursor:pointer;">✕</button>
   `;
   document.body.appendChild(banner);
 }
 
-// ── SAVE PLACE ────────────────────────────────
+// Save place
 function savePlace() {
   if (!currentPlace) return;
-  if (!isLoggedIn() || getRole() === 'guest') {
+  if (!isLoggedIn()) {
     showToast('🔐 سجّل دخولك أولاً لحفظ الأماكن');
     setTimeout(() => window.location.href = 'pages/login.html', 1500);
     return;
@@ -375,38 +446,48 @@ function savePlace() {
   showToast(`✅ تم حفظ "${currentPlace.name}"`);
 }
 
-// ── IMAGE UPLOAD ──────────────────────────────
+// Multiple image upload
 function triggerImageUpload() {
   if (!currentPlace) return;
   if (!getToken()) { showToast('🔐 يجب تسجيل الدخول لرفع صورة'); return; }
+  
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/jpeg,image/png,image/webp';
+  input.multiple = true;
   input.onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    showToast('⏳ جاري رفع الصورة...');
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    if (files.length > 5) {
+      showToast('⚠️ الحد الأقصى 5 صور');
+      return;
+    }
+    
+    showToast(`⏳ جاري رفع ${files.length} صور...`);
     const formData = new FormData();
-    formData.append('image', file);
+    files.forEach(file => formData.append('photos', file));
+    
     try {
-      const res = await fetch(`${API_BASE}/attractions/${currentPlace.id}/image`, {
+      const res = await fetch(`${API_BASE}/attractions/${currentPlace.id}/photos`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${getToken()}` },
         body: formData
       });
+      
       if (res.ok) {
-        const data = await res.json();
-        currentPlace.imageUrl = data.imageUrl;
-        openDetail(currentPlace);
-        showToast('✅ تم رفع الصورة بنجاح');
-        loadAttractionsFromAPI();
-      } else { showToast('❌ فشل رفع الصورة'); }
+        showToast('✅ تم رفع الصور بنجاح');
+        await loadAttractionsFromAPI();
+        const updated = getActivePlaces().find(p => p.id === currentPlace.id);
+        if (updated) openDetail(updated);
+      } else {
+        showToast('❌ فشل رفع الصور');
+      }
     } catch { showToast('❌ خطأ في الاتصال'); }
   };
   input.click();
 }
 
-// ── CHATBOT ───────────────────────────────────
+// Chatbot
 function openChatbot() {
   chatbotOpen = true;
   document.getElementById('chatbot').classList.add('open');
@@ -429,11 +510,13 @@ function clearChat() {
       <button onclick="sendSuggestion(this)">المسجد النبوي</button>
     </div>`;
 }
+
 function sendSuggestion(btn) {
   const text = btn.textContent;
   btn.parentElement.remove();
   sendChatMessage(text);
 }
+
 async function sendChat() {
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
@@ -441,40 +524,55 @@ async function sendChat() {
   input.value = '';
   await sendChatMessage(text);
 }
+
 async function sendChatMessage(text) {
   appendChatMsg(text, 'user');
   chatHistory.push({ role: 'user', content: text });
+
   const input = document.getElementById('chatInput');
   const sendBtn = document.querySelector('.send-btn');
-  input.disabled = true; sendBtn.style.opacity = '0.5'; sendBtn.disabled = true;
+  input.disabled = true;
+  sendBtn.style.opacity = '0.5';
+  sendBtn.disabled = true;
+
   const typingId = 'typing-' + Date.now();
   const body = document.getElementById('chatbotBody');
   body.innerHTML += `<div class="cb-msg bot" id="${typingId}"><div class="cb-bubble typing-indicator"><span></span><span></span><span></span></div></div>`;
   body.scrollTop = body.scrollHeight;
+
   try {
     const response = await fetch(`${API_BASE}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: chatHistory.slice(-8) })
     });
+
     const typingEl = document.getElementById(typingId);
     if (typingEl) typingEl.remove();
+
     if (response.ok) {
       const data = await response.json();
       const reply = data.reply || 'عذراً، لم أتمكن من الإجابة.';
       chatHistory.push({ role: 'assistant', content: reply });
       appendChatMsg(reply, 'bot');
-    } else { throw new Error(`HTTP ${response.status}`); }
+    } else {
+      throw new Error(`HTTP ${response.status}`);
+    }
   } catch (error) {
+    console.error('Chat API error:', error);
     const typingEl = document.getElementById(typingId);
     if (typingEl) typingEl.remove();
     const fallback = 'عذراً، مشكلة في الاتصال بالمساعد الذكي.';
     appendChatMsg(fallback, 'bot');
     chatHistory.push({ role: 'assistant', content: fallback });
   } finally {
-    input.disabled = false; sendBtn.style.opacity = '1'; sendBtn.disabled = false; input.focus();
+    input.disabled = false;
+    sendBtn.style.opacity = '1';
+    sendBtn.disabled = false;
+    input.focus();
   }
 }
+
 function appendChatMsg(text, role) {
   const body = document.getElementById('chatbotBody');
   const div = document.createElement('div');
@@ -484,7 +582,7 @@ function appendChatMsg(text, role) {
   body.scrollTop = body.scrollHeight;
 }
 
-// ── USER MENU ─────────────────────────────────
+// User menu
 function showUserMenu() {
   const existing = document.getElementById('userMenu');
   if (existing) { existing.remove(); return; }
@@ -493,16 +591,20 @@ function showUserMenu() {
   menu.style.cssText = `position:fixed;top:64px;left:20px;background:var(--bg-mid);border:1px solid var(--border);border-radius:var(--radius);padding:12px;z-index:1000;min-width:160px;box-shadow:var(--shadow);direction:rtl;`;
   menu.innerHTML = `
     <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">👤 ${getUsername()}</div>
-    <button onclick="logout()" style="width:100%;background:none;border:none;color:var(--red,#e05555);font-family:'Cairo',sans-serif;font-size:.88rem;cursor:pointer;text-align:right;padding:4px 0;">تسجيل الخروج</button>
+    <button onclick="logout()" style="width:100%;background:none;border:none;color:var(--red);font-family:'Cairo',sans-serif;font-size:.88rem;cursor:pointer;text-align:right;padding:4px 0;">تسجيل الخروج</button>
   `;
   document.body.appendChild(menu);
   setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 10);
 }
-function logout() { localStorage.clear(); window.location.href = 'pages/login.html'; }
 
-// ── REVIEW MODAL ──────────────────────────────
+function logout() {
+  localStorage.clear();
+  window.location.href = 'pages/login.html';
+}
+
+// Review modal
 function openReview() {
-  if (!isLoggedIn() || getRole() === 'guest') {
+  if (!isLoggedIn()) {
     showToast('🔐 سجّل دخولك أولاً للتقييم');
     setTimeout(() => window.location.href = 'pages/login.html', 1500);
     return;
@@ -530,7 +632,7 @@ async function submitReview() {
   showToast('✅ تم إرسال تقييمك، شكراً!');
 }
 
-// ── TOAST ─────────────────────────────────────
+// Toast
 function showToast(msg) {
   let t = document.getElementById('toast');
   if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }

@@ -8,10 +8,11 @@ public class AppDbContext : DbContext
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     public DbSet<Attraction> Attractions => Set<Attraction>();
-    public DbSet<User>       Users       => Set<User>();
-    public DbSet<Admin>      Admins      => Set<Admin>();
-    public DbSet<Review>     Reviews     => Set<Review>();
-    public DbSet<ChatLog>    ChatLogs    => Set<ChatLog>();
+    public DbSet<User> Users => Set<User>();
+    public DbSet<Admin> Admins => Set<Admin>();
+    public DbSet<Review> Reviews => Set<Review>();
+    public DbSet<ChatLog> ChatLogs => Set<ChatLog>();
+    public DbSet<AttractionPhoto> AttractionPhotos => Set<AttractionPhoto>(); // Add this line
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
@@ -31,6 +32,13 @@ public class AppDbContext : DbContext
         mb.Entity<ChatLog>()
           .HasOne(c => c.User).WithMany(u => u.ChatLogs)
           .HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.SetNull);
+
+        // AttractionPhotos relationship
+        mb.Entity<AttractionPhoto>()
+          .HasOne(p => p.Attraction)
+          .WithMany(a => a.Photos)
+          .HasForeignKey(p => p.AttractionId)
+          .OnDelete(DeleteBehavior.Cascade);
 
         // Static seed date
         var seedDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -114,7 +122,7 @@ public class AppDbContext : DbContext
             }
         );
 
-        // Seed Super Admin (superior / superior004)
+        // Seed Super Admin
         mb.Entity<Admin>().HasData(
             new Admin
             {
