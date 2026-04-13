@@ -24,16 +24,11 @@ function isAdmin()     { return getRole() === 'admin' || getRole() === 'superadm
 
 function toggleAdminBtn() {
   const adminBtn = document.getElementById('adminBtn');
-  if (adminBtn) {
-    adminBtn.classList.toggle('hidden', !isAdmin());
-  }
+  if (adminBtn) adminBtn.classList.toggle('hidden', !isAdmin());
 }
 
 function initAuthGuard() {
-  const role = getRole();
-  if (!localStorage.getItem('role')) {
-    localStorage.setItem('role', 'guest');
-  }
+  if (!localStorage.getItem('role')) localStorage.setItem('role', 'guest');
   const splash = document.getElementById('splash');
   if (splash) splash.classList.add('hidden');
   toggleAdminBtn();
@@ -56,9 +51,7 @@ function authFetch(url, options = {}) {
 document.addEventListener('DOMContentLoaded', async () => {
   if (!initAuthGuard()) return;
 
-  const role = getRole();
   const username = getUsername();
-
   const loginBtn = document.getElementById('loginBtn');
   if (loginBtn) {
     if (isLoggedIn() && username) {
@@ -81,6 +74,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   toggleAdminBtn();
   initMap();
+  initDraggableSidebar();
   initDraggableSheet();
 
   try {
@@ -104,6 +98,15 @@ function initMap() {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
   L.control.zoom({ position: 'bottomright' }).addTo(map);
   window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
+  
+  // Close detail panel and mobile sidebar when clicking on map
+  map.on('click', function() {
+    if (window.innerWidth <= 768) {
+      closeDetail();
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar) sidebar.classList.remove('mobile-open');
+    }
+  });
 }
 
 // Load attractions from API
@@ -149,14 +152,6 @@ function renderMarkers(places) {
       .on('click', () => openDetail(p));
     markers.push(m);
   });
-}
-
-// Sidebar
-function toggleSidebar() {
-  if (window.innerWidth <= 768) {
-    document.getElementById('sidebar').classList.toggle('mobile-open');
-    setTimeout(() => map.invalidateSize(), 220);
-  }
 }
 
 // Filter
@@ -208,14 +203,24 @@ function renderPlacesList(places) {
 
 function renderBottomSheet(places) {
   const el = document.getElementById('bsCards');
+  if (!places.length) {
+    el.innerHTML = '<p style="color:var(--text-dim);padding:16px;text-align:center;">لا توجد أماكن مقترحة</p>';
+    return;
+  }
   el.innerHTML = places.map(p => `
     <div class="bs-card" onclick="openDetailById(${p.id})">
       <div class="bs-card-icon">${p.icon}</div>
       <div class="bs-card-name">${p.name}</div>
-      <div class="bs-card-meta">${p.hours}</div>
-      <div class="bs-card-rating">★ ${p.rating}</div>
+      <div class="bs-card-meta">${p.hours || '24/7'}</div>
+      <div class="bs-card-rating">★ ${p.rating || '4.5'}</div>
     </div>
   `).join('');
+  if (!document.querySelector('.bs-drag-hint')) {
+    const hint = document.createElement('div');
+    hint.className = 'bs-drag-hint';
+    hint.textContent = '↑ اسحب للأعلى للمزيد ↑';
+    el.parentElement.appendChild(hint);
+  }
 }
 
 // Detail panel with gallery
@@ -228,7 +233,6 @@ function openDetail(place) {
   currentPlace = place;
   currentPhotos = place.photos || [];
   currentPhotoIndex = 0;
-  
   updateDetailContent();
   document.getElementById('detailPanel').classList.add('open');
   map.setView([place.lat, place.lng], 15, { animate: true });
@@ -238,7 +242,6 @@ function openDetail(place) {
 function updateDetailContent() {
   const place = currentPlace;
   const imgEl = document.getElementById('detailImg');
-  
   if (currentPhotos.length > 0) {
     renderGallery();
   } else if (place.imageUrl) {
@@ -246,7 +249,6 @@ function updateDetailContent() {
   } else {
     imgEl.textContent = place.icon;
   }
-  
   document.getElementById('detailCat').textContent = CATEGORY_LABELS[place.category];
   document.getElementById('detailName').textContent = place.name;
   document.getElementById('detailRating').textContent = `★ ${place.rating}`;
@@ -257,27 +259,20 @@ function updateDetailContent() {
 function renderGallery() {
   const imgEl = document.getElementById('detailImg');
   const currentPhoto = currentPhotos[currentPhotoIndex];
-  
   let html = `
     <div style="position:relative;width:100%;height:100%;">
-      <img src="${currentPhoto.imageUrl}" 
-           style="width:100%;height:100%;object-fit:cover;" 
-           onerror="this.parentElement.parentElement.textContent='${currentPlace.icon}'">
+      <img src="${currentPhoto.imageUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.parentElement.textContent='${currentPlace.icon}'">
   `;
-  
   if (currentPhotos.length > 1) {
     html += `
       <button class="gallery-nav prev" onclick="prevPhoto()">←</button>
       <button class="gallery-nav next" onclick="nextPhoto()">→</button>
       <div class="photo-counter">${currentPhotoIndex + 1} / ${currentPhotos.length}</div>
       <div class="gallery-dots">
-        ${currentPhotos.map((_, i) => `
-          <div class="gallery-dot ${i === currentPhotoIndex ? 'active' : ''}" onclick="goToPhoto(${i})"></div>
-        `).join('')}
+        ${currentPhotos.map((_, i) => `<div class="gallery-dot ${i === currentPhotoIndex ? 'active' : ''}" onclick="goToPhoto(${i})"></div>`).join('')}
       </div>
     `;
   }
-  
   html += '</div>';
   imgEl.innerHTML = html;
 }
@@ -288,42 +283,42 @@ function nextPhoto() {
     renderGallery();
   }
 }
-
 function prevPhoto() {
   if (currentPhotos.length > 0) {
     currentPhotoIndex = (currentPhotoIndex - 1 + currentPhotos.length) % currentPhotos.length;
     renderGallery();
   }
 }
-
 function goToPhoto(index) {
   if (currentPhotos.length > 0 && index >= 0 && index < currentPhotos.length) {
     currentPhotoIndex = index;
     renderGallery();
   }
 }
-
 function closeDetail() {
   document.getElementById('detailPanel').classList.remove('open');
-  clearRoute();
+  // DO NOT clear route here - let the route stay visible
   currentPlace = null;
   currentPhotos = [];
   currentPhotoIndex = 0;
+  
+  // On mobile, also close the sidebar if it's open
+  if (window.innerWidth <= 768) {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.classList.remove('mobile-open');
+  }
 }
 
 // Geolocation
 function locateUser() {
   if (!navigator.geolocation) { showToast('الموقع غير مدعوم في هذا المتصفح'); return; }
   showToast('📍 جاري تحديد موقعك...');
-
   navigator.geolocation.getCurrentPosition(
     pos => {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
       userLocation = { lat, lng };
-
       if (userLocationMarker) map.removeLayer(userLocationMarker);
-
       userLocationMarker = L.marker([lat, lng], {
         icon: L.divIcon({
           html: `<div style="position:relative;width:22px;height:22px;">
@@ -333,7 +328,6 @@ function locateUser() {
           className: '', iconSize: [22, 22], iconAnchor: [11, 11]
         })
       }).addTo(map).bindPopup('📍 أنت هنا').openPopup();
-
       map.setView([lat, lng], 15, { animate: true });
       showToast('✅ تم تحديد موقعك — اضغط "اتجاهاتي" لأي مكان');
     },
@@ -345,9 +339,21 @@ function locateUser() {
   );
 }
 
-// Directions
+// Directions - Fixed: save place info before closing panel
 async function getDirections() {
   if (!currentPlace) return;
+
+  // Save place info before closing (for mobile)
+  const placeLat = currentPlace.lat;
+  const placeLng = currentPlace.lng;
+  const placeName = currentPlace.name;
+
+  // On mobile, close the detail panel to show the map
+  if (window.innerWidth <= 768) {
+    closeDetail();
+    // Restore what we need for routing
+    currentPlace = { name: placeName, lat: placeLat, lng: placeLng };
+  }
 
   if (!userLocation) {
     showToast('📍 يتم تحديد موقعك أولاً...');
@@ -376,33 +382,24 @@ async function getDirections() {
 
 async function drawRoute() {
   if (!userLocation || !currentPlace) return;
-
   clearRoute();
   showToast('🗺️ جاري حساب أقصر طريق...');
-
   const start = [userLocation.lng, userLocation.lat];
   const end   = [currentPlace.lng, currentPlace.lat];
-
   try {
     const url = `https://router.project-osrm.org/route/v1/driving/${start[0]},${start[1]};${end[0]},${end[1]}?overview=full&geometries=geojson`;
     const res = await fetch(url);
     if (!res.ok) throw new Error('Route service error');
     const data = await res.json();
-
     if (!data.routes || data.routes.length === 0) {
       showToast('⚠️ لم يتم العثور على مسار');
       return;
     }
-
     const route = data.routes[0];
     const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
     const distKm  = (route.distance / 1000).toFixed(1);
     const distMin = Math.round(route.duration / 60);
-
-    routeLayer = L.polyline(coords, {
-      color: '#4A90D9', weight: 5, opacity: 0.85, lineJoin: 'round', lineCap: 'round'
-    }).addTo(map);
-
+    routeLayer = L.polyline(coords, { color: '#4A90D9', weight: 5, opacity: 0.85, lineJoin: 'round', lineCap: 'round' }).addTo(map);
     map.fitBounds(routeLayer.getBounds(), { padding: [60, 60] });
     showRouteBanner(distKm, distMin);
   } catch (e) {
@@ -420,7 +417,6 @@ function clearRoute() {
 function showRouteBanner(distKm, distMin) {
   const old = document.getElementById('routeBanner');
   if (old) old.remove();
-
   const banner = document.createElement('div');
   banner.id = 'routeBanner';
   banner.style.cssText = `position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--bg-mid);border:1px solid var(--border);border-radius:16px;padding:12px 20px;display:flex;align-items:center;gap:16px;z-index:800;box-shadow:0 4px 20px rgba(0,0,0,0.5);direction:rtl;font-family:'Cairo',sans-serif;min-width:260px;`;
@@ -451,7 +447,6 @@ function savePlace() {
 function triggerImageUpload() {
   if (!currentPlace) return;
   if (!getToken()) { showToast('🔐 يجب تسجيل الدخول لرفع صورة'); return; }
-  
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/jpeg,image/png,image/webp';
@@ -459,22 +454,16 @@ function triggerImageUpload() {
   input.onchange = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
-    if (files.length > 5) {
-      showToast('⚠️ الحد الأقصى 5 صور');
-      return;
-    }
-    
+    if (files.length > 5) { showToast('⚠️ الحد الأقصى 5 صور'); return; }
     showToast(`⏳ جاري رفع ${files.length} صور...`);
     const formData = new FormData();
     files.forEach(file => formData.append('photos', file));
-    
     try {
       const res = await fetch(`${API_BASE}/attractions/${currentPlace.id}/photos`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${getToken()}` },
         body: formData
       });
-      
       if (res.ok) {
         showToast('✅ تم رفع الصور بنجاح');
         await loadAttractionsFromAPI();
@@ -511,13 +500,11 @@ function clearChat() {
       <button onclick="sendSuggestion(this)">المسجد النبوي</button>
     </div>`;
 }
-
 function sendSuggestion(btn) {
   const text = btn.textContent;
   btn.parentElement.remove();
   sendChatMessage(text);
 }
-
 async function sendChat() {
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
@@ -525,32 +512,26 @@ async function sendChat() {
   input.value = '';
   await sendChatMessage(text);
 }
-
 async function sendChatMessage(text) {
   appendChatMsg(text, 'user');
   chatHistory.push({ role: 'user', content: text });
-
   const input = document.getElementById('chatInput');
   const sendBtn = document.querySelector('.send-btn');
   input.disabled = true;
   sendBtn.style.opacity = '0.5';
   sendBtn.disabled = true;
-
   const typingId = 'typing-' + Date.now();
   const body = document.getElementById('chatbotBody');
   body.innerHTML += `<div class="cb-msg bot" id="${typingId}"><div class="cb-bubble typing-indicator"><span></span><span></span><span></span></div></div>`;
   body.scrollTop = body.scrollHeight;
-
   try {
     const response = await fetch(`${API_BASE}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: chatHistory.slice(-8) })
     });
-
     const typingEl = document.getElementById(typingId);
     if (typingEl) typingEl.remove();
-
     if (response.ok) {
       const data = await response.json();
       const reply = data.reply || 'عذراً، لم أتمكن من الإجابة.';
@@ -573,7 +554,6 @@ async function sendChatMessage(text) {
     input.focus();
   }
 }
-
 function appendChatMsg(text, role) {
   const body = document.getElementById('chatbotBody');
   const div = document.createElement('div');
@@ -597,7 +577,6 @@ function showUserMenu() {
   document.body.appendChild(menu);
   setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 10);
 }
-
 function logout() {
   localStorage.clear();
   window.location.href = 'pages/login.html';
@@ -641,203 +620,216 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
 }
+
 // ============================================
 // DRAGGABLE BOTTOM SHEET
 // ============================================
-
-let bottomSheetState = 'collapsed'; // 'collapsed', 'half', 'expanded'
-let startY = 0;
-let currentSheetHeight = 0;
+let bottomSheetState = 'collapsed';
+let startY = 0, currentSheetHeight = 0, isDraggingSheet = false;
 const sheet = document.getElementById('bottomSheet');
-const handle = document.querySelector('.bs-handle');
-const mapElement = document.getElementById('map');
-
-// Heights in pixels
-const COLLAPSED_HEIGHT = 120;
-const HALF_HEIGHT = 280;
-const EXPANDED_HEIGHT = 420;
+const sheetHandle = document.querySelector('.bs-handle');
+const COLLAPSED_HEIGHT = 120, HALF_HEIGHT = 280, EXPANDED_HEIGHT = 420;
 
 function initDraggableSheet() {
-    if (!sheet || !handle) return;
-    
-    // Set initial height
-    sheet.style.height = COLLAPSED_HEIGHT + 'px';
-    sheet.style.transition = 'height 0.3s ease';
-    sheet.style.overflow = 'hidden';
-    
-    // Touch events for mobile
-    handle.addEventListener('touchstart', startDrag);
-    handle.addEventListener('touchmove', drag);
-    handle.addEventListener('touchend', endDrag);
-    
-    // Mouse events for desktop
-    handle.addEventListener('mousedown', startDrag);
-    window.addEventListener('mousemove', drag);
-    window.addEventListener('mouseup', endDrag);
-    
-    // Click to toggle
-    handle.addEventListener('click', toggleSheet);
-    
-    // Adjust map padding when sheet height changes
-    updateMapPadding();
+  if (!sheet || !sheetHandle) return;
+  sheet.style.height = COLLAPSED_HEIGHT + 'px';
+  sheet.style.transition = 'height 0.3s ease';
+  sheet.style.overflow = 'hidden';
+  sheetHandle.addEventListener('touchstart', startSheetDrag);
+  sheetHandle.addEventListener('touchmove', dragSheet);
+  sheetHandle.addEventListener('touchend', endSheetDrag);
+  sheetHandle.addEventListener('mousedown', startSheetDrag);
+  window.addEventListener('mousemove', dragSheet);
+  window.addEventListener('mouseup', endSheetDrag);
+  sheetHandle.addEventListener('click', toggleSheet);
+  updateMapPadding();
 }
-
-let isDragging = false;
-
-function startDrag(e) {
-    isDragging = true;
-    startY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
-    currentSheetHeight = sheet.offsetHeight;
-    sheet.style.transition = 'none';
-    
-    // Prevent page scroll while dragging
-    e.preventDefault();
+function startSheetDrag(e) {
+  isDraggingSheet = true;
+  startY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+  currentSheetHeight = sheet.offsetHeight;
+  sheet.style.transition = 'none';
+  e.preventDefault();
 }
-
-function drag(e) {
-    if (!isDragging) return;
-    
-    e.preventDefault();
-    const currentY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
-    const deltaY = startY - currentY; // Up = positive, Down = negative
-    
-    let newHeight = currentSheetHeight + deltaY;
-    
-    // Constrain between collapsed and expanded
-    newHeight = Math.max(COLLAPSED_HEIGHT, Math.min(EXPANDED_HEIGHT, newHeight));
-    
-    sheet.style.height = newHeight + 'px';
-    updateSheetContent(newHeight);
+function dragSheet(e) {
+  if (!isDraggingSheet) return;
+  e.preventDefault();
+  const currentY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+  const deltaY = startY - currentY;
+  let newHeight = currentSheetHeight + deltaY;
+  newHeight = Math.max(COLLAPSED_HEIGHT, Math.min(EXPANDED_HEIGHT, newHeight));
+  sheet.style.height = newHeight + 'px';
+  updateSheetContent(newHeight);
 }
-
-function endDrag(e) {
-    if (!isDragging) return;
-    
-    isDragging = false;
-    sheet.style.transition = 'height 0.3s ease';
-    
-    const finalHeight = sheet.offsetHeight;
-    
-    // Snap to nearest state
-    const diffCollapsed = Math.abs(finalHeight - COLLAPSED_HEIGHT);
-    const diffHalf = Math.abs(finalHeight - HALF_HEIGHT);
-    const diffExpanded = Math.abs(finalHeight - EXPANDED_HEIGHT);
-    
-    const minDiff = Math.min(diffCollapsed, diffHalf, diffExpanded);
-    
-    if (minDiff === diffCollapsed) {
-        setSheetState('collapsed');
-    } else if (minDiff === diffHalf) {
-        setSheetState('half');
-    } else {
-        setSheetState('expanded');
-    }
-    
-    updateMapPadding();
+function endSheetDrag(e) {
+  if (!isDraggingSheet) return;
+  isDraggingSheet = false;
+  sheet.style.transition = 'height 0.3s ease';
+  const finalHeight = sheet.offsetHeight;
+  const diffCollapsed = Math.abs(finalHeight - COLLAPSED_HEIGHT);
+  const diffHalf = Math.abs(finalHeight - HALF_HEIGHT);
+  const diffExpanded = Math.abs(finalHeight - EXPANDED_HEIGHT);
+  const minDiff = Math.min(diffCollapsed, diffHalf, diffExpanded);
+  if (minDiff === diffCollapsed) setSheetState('collapsed');
+  else if (minDiff === diffHalf) setSheetState('half');
+  else setSheetState('expanded');
+  updateMapPadding();
 }
-
 function toggleSheet() {
-    if (isDragging) return;
-    
-    // Cycle through states: collapsed -> half -> expanded -> collapsed
-    if (bottomSheetState === 'collapsed') {
-        setSheetState('half');
-    } else if (bottomSheetState === 'half') {
-        setSheetState('expanded');
-    } else {
-        setSheetState('collapsed');
-    }
+  if (isDraggingSheet) return;
+  if (bottomSheetState === 'collapsed') setSheetState('half');
+  else if (bottomSheetState === 'half') setSheetState('expanded');
+  else setSheetState('collapsed');
 }
-
 function setSheetState(state) {
-    bottomSheetState = state;
-    
-    switch(state) {
-        case 'collapsed':
-            sheet.style.height = COLLAPSED_HEIGHT + 'px';
-            break;
-        case 'half':
-            sheet.style.height = HALF_HEIGHT + 'px';
-            break;
-        case 'expanded':
-            sheet.style.height = EXPANDED_HEIGHT + 'px';
-            break;
-    }
-    
-    updateSheetContent(sheet.offsetHeight);
-    updateMapPadding();
+  bottomSheetState = state;
+  if (state === 'collapsed') sheet.style.height = COLLAPSED_HEIGHT + 'px';
+  else if (state === 'half') sheet.style.height = HALF_HEIGHT + 'px';
+  else sheet.style.height = EXPANDED_HEIGHT + 'px';
+  updateSheetContent(sheet.offsetHeight);
+  updateMapPadding();
 }
-
 function updateSheetContent(height) {
-    // Show more content when expanded
-    const bsCards = document.getElementById('bsCards');
-    const bsHeader = document.querySelector('.bs-header');
-    
-    if (height >= EXPANDED_HEIGHT - 50) {
-        // Expanded - show more cards
-        sheet.classList.add('expanded');
-        if (bsCards) {
-            bsCards.style.flexWrap = 'wrap';
-            bsCards.style.overflowY = 'auto';
-            bsCards.style.maxHeight = (EXPANDED_HEIGHT - 80) + 'px';
-        }
-    } else if (height >= HALF_HEIGHT - 50) {
-        // Half - show scrollable horizontal
-        sheet.classList.remove('expanded');
-        if (bsCards) {
-            bsCards.style.flexWrap = 'nowrap';
-            bsCards.style.overflowX = 'auto';
-            bsCards.style.overflowY = 'hidden';
-            bsCards.style.maxHeight = 'none';
-        }
-    } else {
-        // Collapsed - just a peek
-        sheet.classList.remove('expanded');
-        if (bsCards) {
-            bsCards.style.flexWrap = 'nowrap';
-            bsCards.style.overflowX = 'auto';
-            bsCards.style.overflowY = 'hidden';
-            bsCards.style.maxHeight = 'none';
-        }
-    }
+  const bsCards = document.getElementById('bsCards');
+  if (height >= EXPANDED_HEIGHT - 50) {
+    sheet.classList.add('expanded');
+    if (bsCards) { bsCards.style.flexWrap = 'wrap'; bsCards.style.overflowY = 'auto'; bsCards.style.maxHeight = (EXPANDED_HEIGHT - 80) + 'px'; }
+  } else {
+    sheet.classList.remove('expanded');
+    if (bsCards) { bsCards.style.flexWrap = 'nowrap'; bsCards.style.overflowX = 'auto'; bsCards.style.overflowY = 'hidden'; bsCards.style.maxHeight = 'none'; }
+  }
 }
-
 function updateMapPadding() {
-    if (!map) return;
-    
-    const sheetHeight = sheet.offsetHeight;
-    // Adjust map view to account for bottom sheet
-    map._container.style.paddingBottom = (sheetHeight - 20) + 'px';
-    map.invalidateSize();
+  if (!map) return;
+  const sheetHeight = sheet.offsetHeight;
+  map._container.style.paddingBottom = (sheetHeight - 20) + 'px';
+  map.invalidateSize();
 }
 
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initDraggableSheet);
-} else {
-    initDraggableSheet();
+// ============================================
+// FREELY DRAGGABLE SIDEBAR (no snap points)
+// ============================================
+let sidebarStartX = 0, sidebarCurrentWidth = 0, isDraggingSidebar = false;
+const SIDEBAR_MIN_WIDTH = 0;
+const SIDEBAR_MAX_WIDTH = 400;
+
+function initDraggableSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+  
+  const dragHandle = document.createElement('div');
+  dragHandle.className = 'sidebar-drag-handle';
+  dragHandle.innerHTML = '<span></span><span></span><span></span>';
+  sidebar.appendChild(dragHandle);
+  
+  sidebar.style.width = '340px';
+  sidebar.style.transition = 'none';
+  sidebar.style.position = 'relative';
+  
+  dragHandle.addEventListener('touchstart', startSidebarDrag);
+  dragHandle.addEventListener('touchmove', dragSidebar);
+  dragHandle.addEventListener('touchend', endSidebarDrag);
+  dragHandle.addEventListener('mousedown', startSidebarDrag);
+  window.addEventListener('mousemove', dragSidebar);
+  window.addEventListener('mouseup', endSidebarDrag);
+  
+  window.addEventListener('mouseup', () => {
+    if (map) setTimeout(() => map.invalidateSize(), 50);
+  });
 }
-function renderBottomSheet(places) {
-    const el = document.getElementById('bsCards');
-    if (!places.length) {
-        el.innerHTML = '<p style="color:var(--text-dim);padding:16px;text-align:center;">لا توجد أماكن مقترحة</p>';
-        return;
-    }
-    
-    el.innerHTML = places.map(p => `
-        <div class="bs-card" onclick="openDetailById(${p.id})">
-            <div class="bs-card-icon">${p.icon}</div>
-            <div class="bs-card-name">${p.name}</div>
-            <div class="bs-card-meta">${p.hours || '24/7'}</div>
-            <div class="bs-card-rating">★ ${p.rating || '4.5'}</div>
-        </div>
-    `).join('');
-    
-    // Add drag hint
-    if (!document.querySelector('.bs-drag-hint')) {
-        const hint = document.createElement('div');
-        hint.className = 'bs-drag-hint';
-        hint.textContent = '↑ اسحب للأعلى للمزيد ↑';
-        el.parentElement.appendChild(hint);
-    }
+
+function startSidebarDrag(e) {
+  const sidebar = document.getElementById('sidebar');
+  isDraggingSidebar = true;
+  sidebarStartX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+  sidebarCurrentWidth = sidebar.offsetWidth;
+  sidebar.style.transition = 'none';
+  document.body.style.cursor = 'ew-resize';
+  sidebar.classList.add('dragging');
+  e.preventDefault();
+  e.stopPropagation();
 }
+
+function dragSidebar(e) {
+  if (!isDraggingSidebar) return;
+  e.preventDefault();
+  const sidebar = document.getElementById('sidebar');
+  const currentX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+  const deltaX = sidebarStartX - currentX;
+  let newWidth = sidebarCurrentWidth + deltaX;
+  newWidth = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, newWidth));
+  sidebar.style.width = newWidth + 'px';
+  const opacity = Math.min(1, newWidth / 200);
+  const contentElements = sidebar.querySelectorAll('.sidebar-header, .search-wrap, .filter-chips, .places-list, .sidebar-footer');
+  contentElements.forEach(el => el.style.opacity = opacity);
+  if (map) map.invalidateSize();
+}
+
+function endSidebarDrag(e) {
+  if (!isDraggingSidebar) return;
+  const sidebar = document.getElementById('sidebar');
+  isDraggingSidebar = false;
+  document.body.style.cursor = '';
+  sidebar.classList.remove('dragging');
+  const toggleBtn = document.getElementById('toggleSidebarBtn');
+  if (toggleBtn) {
+    const currentWidth = sidebar.offsetWidth;
+    if (currentWidth < 100) {
+      toggleBtn.innerHTML = '▶';
+      toggleBtn.classList.add('collapsed');
+    } else {
+      toggleBtn.innerHTML = '◀';
+      toggleBtn.classList.remove('collapsed');
+    }
+  }
+  if (map) map.invalidateSize();
+}
+
+function toggleSidebarState() {
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('toggleSidebarBtn');
+  const currentWidth = sidebar.offsetWidth;
+  if (currentWidth < 100) {
+    const savedWidth = localStorage.getItem('sidebarWidth') || '340';
+    sidebar.style.width = savedWidth + 'px';
+    toggleBtn.innerHTML = '◀';
+    toggleBtn.classList.remove('collapsed');
+  } else {
+    localStorage.setItem('sidebarWidth', currentWidth);
+    sidebar.style.width = '0px';
+    toggleBtn.innerHTML = '▶';
+    toggleBtn.classList.add('collapsed');
+  }
+  const newWidth = sidebar.offsetWidth;
+  const opacity = Math.min(1, newWidth / 200);
+  const contentElements = sidebar.querySelectorAll('.sidebar-header, .search-wrap, .filter-chips, .places-list, .sidebar-footer');
+  contentElements.forEach(el => el.style.opacity = opacity);
+  setTimeout(() => { if (map) map.invalidateSize(); }, 50);
+}
+
+function toggleSidebar() {
+  if (window.innerWidth <= 768) {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('mobile-open');
+    setTimeout(() => map?.invalidateSize(), 250);
+  } else {
+    toggleSidebarState();
+  }
+}
+
+function toggleSidebarCollapse() {
+  toggleSidebarState();
+}
+
+document.addEventListener('click', function(e) {
+  if (window.innerWidth <= 768) {
+    const sidebar = document.getElementById('sidebar');
+    const menuBtn = document.querySelector('.menu-btn');
+    if (sidebar && sidebar.classList.contains('mobile-open') && 
+        !sidebar.contains(e.target) && 
+        menuBtn && !menuBtn.contains(e.target)) {
+      sidebar.classList.remove('mobile-open');
+      setTimeout(() => map?.invalidateSize(), 250);
+    }
+  }
+});

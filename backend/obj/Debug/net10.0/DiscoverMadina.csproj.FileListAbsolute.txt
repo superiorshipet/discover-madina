@@ -437,8 +437,8 @@
 /home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/e1cts9np3j-{0}-cczuj1ipil-cczuj1ipil.gz
 /home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/kq8u9j5hj8-{0}-q2oq8qy1u1-q2oq8qy1u1.gz
 /home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/gejnd2e8s5-{0}-i3vywzbt0i-i3vywzbt0i.gz
-/home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/3gcen9llub-{0}-i6mev4u1w3-i6mev4u1w3.gz
 /home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/5iu8i7ynxg-{0}-kjoan4vf8v-kjoan4vf8v.gz
-/home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/zkfpvuq64q-{0}-4nona5jidj-4nona5jidj.gz
 /home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/z576cxtj5c-{0}-ym6virdpu0-ym6virdpu0.gz
 /home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/1tixsfwdsp-{0}-f02d43k7ua-f02d43k7ua.gz
+/home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/3gcen9llub-{0}-oks3r31w5j-oks3r31w5j.gz
+/home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/zkfpvuq64q-{0}-aygxu635qj-aygxu635qj.gz
