@@ -945,3 +945,188 @@ html, body {
 @media (min-width: 769px) {
   .cat-tabs { display: none; }
 }
+/* ─── DRAGGABLE BOTTOM SHEET ─── */
+.bottom-sheet {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    z-index: 190;
+    background: rgba(20, 23, 32, 0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    padding: 12px 16px 20px;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+    transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.bs-handle {
+    width: 50px;
+    height: 5px;
+    background: var(--border);
+    border-radius: 3px;
+    margin: 0 auto 16px;
+    cursor: grab;
+    transition: background 0.2s, width 0.2s;
+}
+
+.bs-handle:hover {
+    background: var(--gold-dim);
+    width: 60px;
+}
+
+.bs-handle:active {
+    cursor: grabbing;
+    background: var(--gold);
+}
+
+.bottom-sheet.expanded .bs-handle {
+    margin-bottom: 12px;
+}
+
+.bs-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.bs-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.bs-badge {
+    font-size: 0.72rem;
+    background: var(--gold-dim);
+    color: var(--bg-deep);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 700;
+}
+
+.bs-cards {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold-dim) var(--bg-card);
+    transition: all 0.3s ease;
+}
+
+.bs-cards::-webkit-scrollbar {
+    height: 4px;
+}
+
+.bs-cards::-webkit-scrollbar-track {
+    background: var(--bg-card);
+    border-radius: 2px;
+}
+
+.bs-cards::-webkit-scrollbar-thumb {
+    background: var(--gold-dim);
+    border-radius: 2px;
+}
+
+.bottom-sheet.expanded .bs-cards {
+    flex-wrap: wrap;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 340px;
+    gap: 10px;
+}
+
+.bottom-sheet.expanded .bs-card {
+    min-width: calc(50% - 5px);
+    flex: 0 0 calc(50% - 5px);
+}
+
+.bs-card {
+    min-width: 200px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.bs-card:hover {
+    border-color: var(--gold-dim);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-gold);
+}
+
+.bs-card-icon {
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.bs-card-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bs-card-meta {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.bs-card-rating {
+    color: var(--gold);
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+/* Sheet state indicators */
+.bs-drag-hint {
+    text-align: center;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-top: 8px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.bottom-sheet:hover .bs-drag-hint {
+    opacity: 0.7;
+}
+
+/* Map padding adjustment */
+#map {
+    transition: padding-bottom 0.3s ease;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+    .bottom-sheet {
+        padding: 10px 12px 16px;
+    }
+    
+    .bs-handle {
+        width: 40px;
+        height: 4px;
+        margin-bottom: 12px;
+    }
+    
+    .bs-card {
+        min-width: 160px;
+        padding: 12px;
+    }
+    
+    .bottom-sheet.expanded .bs-card {
+        min-width: 100%;
+        flex: 0 0 100%;
+    }
+}
