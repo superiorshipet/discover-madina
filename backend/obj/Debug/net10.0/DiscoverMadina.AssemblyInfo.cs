@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DiscoverMadina")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+377a9bf74e4d2fee0edbaa770f9cf4af7c36471b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7944606e423d9adf30775110efda7fbc3f0ef2a2")]
 [assembly: System.Reflection.AssemblyProductAttribute("DiscoverMadina")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DiscoverMadina")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
