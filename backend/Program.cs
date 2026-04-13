@@ -11,9 +11,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseSqlite(builder.Configuration.GetConnectionString("Default") ?? "Data Source=discover_madina.db"));
 
+// Repositories
 builder.Services.AddScoped<IAttractionRepository, AttractionRepository>();
-builder.Services.AddScoped<IReviewRepository,    ReviewRepository>();
-builder.Services.AddScoped<IUserRepository,      UserRepository>();
+builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IAdminRepository, AdminRepository>();
+builder.Services.AddScoped<IAttractionPhotoRepository, AttractionPhotoRepository>(); // ADD THIS LINE
 
 builder.Services.AddHttpClient();
 
@@ -39,8 +42,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>
     p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
-    var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
@@ -52,15 +54,13 @@ using (var scope = app.Services.CreateScope()) {
 
 app.UseSwagger();
 app.UseSwaggerUI();
-app.UseStaticFiles(); // serve /wwwroot (uploaded images)
+app.UseStaticFiles();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.UseDefaultFiles(); 
-app.UseStaticFiles(); 
-
-app.MapControllers();
+app.UseStaticFiles(); // second call is redundant but harmless
 
 // ensure wwwroot/uploads exists
 var uploadsDir = Path.Combine(app.Environment.WebRootPath ?? "wwwroot", "uploads");
