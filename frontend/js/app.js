@@ -81,6 +81,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   toggleAdminBtn();
   initMap();
+  initDraggableSheet();
 
   try {
     await loadAttractionsFromAPI();
@@ -259,7 +260,7 @@ function renderGallery() {
   
   let html = `
     <div style="position:relative;width:100%;height:100%;">
-      <img src="${window.location.origin}${currentPhoto.imageUrl}" 
+      <img src="${currentPhoto.imageUrl}" 
            style="width:100%;height:100%;object-fit:cover;" 
            onerror="this.parentElement.parentElement.textContent='${currentPlace.icon}'">
   `;
@@ -639,4 +640,204 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
+}
+// ============================================
+// DRAGGABLE BOTTOM SHEET
+// ============================================
+
+let bottomSheetState = 'collapsed'; // 'collapsed', 'half', 'expanded'
+let startY = 0;
+let currentSheetHeight = 0;
+const sheet = document.getElementById('bottomSheet');
+const handle = document.querySelector('.bs-handle');
+const mapElement = document.getElementById('map');
+
+// Heights in pixels
+const COLLAPSED_HEIGHT = 120;
+const HALF_HEIGHT = 280;
+const EXPANDED_HEIGHT = 420;
+
+function initDraggableSheet() {
+    if (!sheet || !handle) return;
+    
+    // Set initial height
+    sheet.style.height = COLLAPSED_HEIGHT + 'px';
+    sheet.style.transition = 'height 0.3s ease';
+    sheet.style.overflow = 'hidden';
+    
+    // Touch events for mobile
+    handle.addEventListener('touchstart', startDrag);
+    handle.addEventListener('touchmove', drag);
+    handle.addEventListener('touchend', endDrag);
+    
+    // Mouse events for desktop
+    handle.addEventListener('mousedown', startDrag);
+    window.addEventListener('mousemove', drag);
+    window.addEventListener('mouseup', endDrag);
+    
+    // Click to toggle
+    handle.addEventListener('click', toggleSheet);
+    
+    // Adjust map padding when sheet height changes
+    updateMapPadding();
+}
+
+let isDragging = false;
+
+function startDrag(e) {
+    isDragging = true;
+    startY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+    currentSheetHeight = sheet.offsetHeight;
+    sheet.style.transition = 'none';
+    
+    // Prevent page scroll while dragging
+    e.preventDefault();
+}
+
+function drag(e) {
+    if (!isDragging) return;
+    
+    e.preventDefault();
+    const currentY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+    const deltaY = startY - currentY; // Up = positive, Down = negative
+    
+    let newHeight = currentSheetHeight + deltaY;
+    
+    // Constrain between collapsed and expanded
+    newHeight = Math.max(COLLAPSED_HEIGHT, Math.min(EXPANDED_HEIGHT, newHeight));
+    
+    sheet.style.height = newHeight + 'px';
+    updateSheetContent(newHeight);
+}
+
+function endDrag(e) {
+    if (!isDragging) return;
+    
+    isDragging = false;
+    sheet.style.transition = 'height 0.3s ease';
+    
+    const finalHeight = sheet.offsetHeight;
+    
+    // Snap to nearest state
+    const diffCollapsed = Math.abs(finalHeight - COLLAPSED_HEIGHT);
+    const diffHalf = Math.abs(finalHeight - HALF_HEIGHT);
+    const diffExpanded = Math.abs(finalHeight - EXPANDED_HEIGHT);
+    
+    const minDiff = Math.min(diffCollapsed, diffHalf, diffExpanded);
+    
+    if (minDiff === diffCollapsed) {
+        setSheetState('collapsed');
+    } else if (minDiff === diffHalf) {
+        setSheetState('half');
+    } else {
+        setSheetState('expanded');
+    }
+    
+    updateMapPadding();
+}
+
+function toggleSheet() {
+    if (isDragging) return;
+    
+    // Cycle through states: collapsed -> half -> expanded -> collapsed
+    if (bottomSheetState === 'collapsed') {
+        setSheetState('half');
+    } else if (bottomSheetState === 'half') {
+        setSheetState('expanded');
+    } else {
+        setSheetState('collapsed');
+    }
+}
+
+function setSheetState(state) {
+    bottomSheetState = state;
+    
+    switch(state) {
+        case 'collapsed':
+            sheet.style.height = COLLAPSED_HEIGHT + 'px';
+            break;
+        case 'half':
+            sheet.style.height = HALF_HEIGHT + 'px';
+            break;
+        case 'expanded':
+            sheet.style.height = EXPANDED_HEIGHT + 'px';
+            break;
+    }
+    
+    updateSheetContent(sheet.offsetHeight);
+    updateMapPadding();
+}
+
+function updateSheetContent(height) {
+    // Show more content when expanded
+    const bsCards = document.getElementById('bsCards');
+    const bsHeader = document.querySelector('.bs-header');
+    
+    if (height >= EXPANDED_HEIGHT - 50) {
+        // Expanded - show more cards
+        sheet.classList.add('expanded');
+        if (bsCards) {
+            bsCards.style.flexWrap = 'wrap';
+            bsCards.style.overflowY = 'auto';
+            bsCards.style.maxHeight = (EXPANDED_HEIGHT - 80) + 'px';
+        }
+    } else if (height >= HALF_HEIGHT - 50) {
+        // Half - show scrollable horizontal
+        sheet.classList.remove('expanded');
+        if (bsCards) {
+            bsCards.style.flexWrap = 'nowrap';
+            bsCards.style.overflowX = 'auto';
+            bsCards.style.overflowY = 'hidden';
+            bsCards.style.maxHeight = 'none';
+        }
+    } else {
+        // Collapsed - just a peek
+        sheet.classList.remove('expanded');
+        if (bsCards) {
+            bsCards.style.flexWrap = 'nowrap';
+            bsCards.style.overflowX = 'auto';
+            bsCards.style.overflowY = 'hidden';
+            bsCards.style.maxHeight = 'none';
+        }
+    }
+}
+
+function updateMapPadding() {
+    if (!map) return;
+    
+    const sheetHeight = sheet.offsetHeight;
+    // Adjust map view to account for bottom sheet
+    map._container.style.paddingBottom = (sheetHeight - 20) + 'px';
+    map.invalidateSize();
+}
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDraggableSheet);
+} else {
+    initDraggableSheet();
+}
+function renderBottomSheet(places) {
+    const el = document.getElementById('bsCards');
+    if (!places.length) {
+        el.innerHTML = '<p style="color:var(--text-dim);padding:16px;text-align:center;">لا توجد أماكن مقترحة</p>';
+        return;
+    }
+    
+    el.innerHTML = places.map(p => `
+        <div class="bs-card" onclick="openDetailById(${p.id})">
+            <div class="bs-card-icon">${p.icon}</div>
+            <div class="bs-card-name">${p.name}</div>
+            <div class="bs-card-meta">${p.hours || '24/7'}</div>
+            <div class="bs-card-rating">★ ${p.rating || '4.5'}</div>
+        </div>
+    `).join('');
+    
+    // Add drag hint
+    if (!document.querySelector('.bs-drag-hint')) {
+        const hint = document.createElement('div');
+        hint.className = 'bs-drag-hint';
+        hint.textContent = '↑ اسحب للأعلى للمزيد ↑';
+        el.parentElement.appendChild(hint);
+    }
 }
