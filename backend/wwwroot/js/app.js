@@ -99,7 +99,6 @@ function initMap() {
   L.control.zoom({ position: 'bottomright' }).addTo(map);
   window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
   
-  // Close detail panel and mobile sidebar when clicking on map
   map.on('click', function() {
     if (window.innerWidth <= 768) {
       closeDetail();
@@ -149,7 +148,13 @@ function renderMarkers(places) {
     });
     const m = L.marker([p.lat, p.lng], { icon })
       .addTo(map)
-      .on('click', () => openDetail(p));
+      .on('click', () => {
+        if (window.innerWidth <= 768) {
+          const sidebar = document.getElementById('sidebar');
+          if (sidebar) sidebar.classList.remove('mobile-open');
+        }
+        openDetail(p);
+      });
     markers.push(m);
   });
 }
@@ -223,6 +228,43 @@ function renderBottomSheet(places) {
   }
 }
 
+// ============================================
+// REVIEWS - Load approved reviews for a place
+// ============================================
+async function loadReviewsForPlace(attractionId) {
+  const reviewsContainer = document.getElementById('reviewsList');
+  if (!reviewsContainer) return;
+  
+  try {
+    const res = await fetch(`${API_BASE}/reviews/attraction/${attractionId}`);
+    if (!res.ok) throw new Error('Failed to load reviews');
+    
+    const reviews = await res.json();
+    const approvedReviews = reviews.filter(r => r.status === 'approved');
+    
+    if (approvedReviews.length === 0) {
+      reviewsContainer.innerHTML = '<p class="no-reviews">لا توجد تقييمات بعد. كن أول من يقيم!</p>';
+      return;
+    }
+    
+    approvedReviews.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    reviewsContainer.innerHTML = approvedReviews.map(r => `
+      <div class="review-item">
+        <div class="review-header">
+          <span class="review-user">👤 ${r.username || 'مستخدم'}</span>
+          <span class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
+        </div>
+        <div class="review-comment">${r.comment || 'بدون تعليق'}</div>
+        <div class="review-date">${new Date(r.createdAt).toLocaleDateString('ar-SA')}</div>
+      </div>
+    `).join('');
+  } catch (e) {
+    console.error('Failed to load reviews:', e);
+    reviewsContainer.innerHTML = '<p class="no-reviews">تعذر تحميل التقييمات</p>';
+  }
+}
+
 // Detail panel with gallery
 function openDetailById(id) {
   const place = getActivePlaces().find(p => p.id === id);
@@ -237,6 +279,13 @@ function openDetail(place) {
   document.getElementById('detailPanel').classList.add('open');
   map.setView([place.lat, place.lng], 15, { animate: true });
   clearRoute();
+  
+  loadReviewsForPlace(place.id);
+  
+  if (window.innerWidth <= 768) {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.classList.remove('mobile-open');
+  }
 }
 
 function updateDetailContent() {
@@ -297,12 +346,15 @@ function goToPhoto(index) {
 }
 function closeDetail() {
   document.getElementById('detailPanel').classList.remove('open');
-  // DO NOT clear route here - let the route stay visible
   currentPlace = null;
   currentPhotos = [];
   currentPhotoIndex = 0;
   
-  // On mobile, also close the sidebar if it's open
+  const reviewsContainer = document.getElementById('reviewsList');
+  if (reviewsContainer) {
+    reviewsContainer.innerHTML = '<p class="no-reviews">لا توجد تقييمات بعد. كن أول من يقيم!</p>';
+  }
+  
   if (window.innerWidth <= 768) {
     const sidebar = document.getElementById('sidebar');
     if (sidebar) sidebar.classList.remove('mobile-open');
@@ -339,19 +391,16 @@ function locateUser() {
   );
 }
 
-// Directions - Fixed: save place info before closing panel
+// Directions
 async function getDirections() {
   if (!currentPlace) return;
 
-  // Save place info before closing (for mobile)
   const placeLat = currentPlace.lat;
   const placeLng = currentPlace.lng;
   const placeName = currentPlace.name;
 
-  // On mobile, close the detail panel to show the map
   if (window.innerWidth <= 768) {
     closeDetail();
-    // Restore what we need for routing
     currentPlace = { name: placeName, lat: placeLat, lng: placeLng };
   }
 
@@ -601,15 +650,32 @@ function updateStars(v) {
 async function submitReview() {
   const text = document.getElementById('reviewText').value.trim();
   if (!currentRating) { showToast('الرجاء اختيار تقييم'); return; }
+  if (!currentPlace) { showToast('حدث خطأ، حاول مرة أخرى'); return; }
+  
+  const username = getUsername();
+  
   try {
-    await authFetch(`${API_BASE}/reviews`, {
+    const res = await authFetch(`${API_BASE}/reviews`, {
       method: 'POST',
-      body: JSON.stringify({ rating: currentRating, comment: text, attractionId: currentPlace?.id, userId: 1 })
+      body: JSON.stringify({ 
+        rating: currentRating, 
+        comment: text, 
+        attractionId: currentPlace.id,
+        username: username
+      })
     });
-  } catch(e) {}
-  closeReview();
-  document.getElementById('reviewText').value = '';
-  showToast('✅ تم إرسال تقييمك، شكراً!');
+    
+    if (res.ok) {
+      showToast('✅ تم إرسال تقييمك للمراجعة. سيظهر بعد الموافقة عليه.');
+      closeReview();
+      document.getElementById('reviewText').value = '';
+      setTimeout(() => loadReviewsForPlace(currentPlace.id), 500);
+    } else {
+      showToast('❌ فشل إرسال التقييم');
+    }
+  } catch(e) {
+    showToast('❌ خطأ في الاتصال');
+  }
 }
 
 // Toast
@@ -707,7 +773,7 @@ function updateMapPadding() {
 }
 
 // ============================================
-// FREELY DRAGGABLE SIDEBAR (no snap points)
+// FREELY DRAGGABLE SIDEBAR
 // ============================================
 let sidebarStartX = 0, sidebarCurrentWidth = 0, isDraggingSidebar = false;
 const SIDEBAR_MIN_WIDTH = 0;
@@ -792,13 +858,17 @@ function toggleSidebarState() {
   if (currentWidth < 100) {
     const savedWidth = localStorage.getItem('sidebarWidth') || '340';
     sidebar.style.width = savedWidth + 'px';
-    toggleBtn.innerHTML = '◀';
-    toggleBtn.classList.remove('collapsed');
+    if (toggleBtn) {
+      toggleBtn.innerHTML = '◀';
+      toggleBtn.classList.remove('collapsed');
+    }
   } else {
     localStorage.setItem('sidebarWidth', currentWidth);
     sidebar.style.width = '0px';
-    toggleBtn.innerHTML = '▶';
-    toggleBtn.classList.add('collapsed');
+    if (toggleBtn) {
+      toggleBtn.innerHTML = '▶';
+      toggleBtn.classList.add('collapsed');
+    }
   }
   const newWidth = sidebar.offsetWidth;
   const opacity = Math.min(1, newWidth / 200);

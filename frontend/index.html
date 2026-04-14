@@ -2,13 +2,13 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>اكتشف المدينة | Discover Madina</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="css/style.css?v=2" />
+  <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
 
@@ -17,7 +17,7 @@
   <div class="splash-inner">
     <div class="splash-logo">
       <div class="logo-ring"></div>
-      <div class="logo-ring r2"></div>  
+      <div class="logo-ring r2"></div>
       <span class="logo-letter">م</span>
     </div>
     <h1 class="splash-title">اكتشف المدينة</h1>
@@ -31,8 +31,7 @@
 
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
-<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
-<div class="sidebar-header">
+    <div class="sidebar-header">
       <div class="brand">
         <div class="brand-icon">م</div>
         <div>
@@ -50,7 +49,7 @@
 
     <div class="filter-chips" id="filterChips">
       <button class="chip active" onclick="filterCat(this,'all')">الكل</button>
-       <button class="chip" onclick="locateUser()" title="موقعي">موقعي</button>
+      <button class="chip" onclick="locateUser()" title="موقعي">📍 موقعي</button>
       <button class="chip" onclick="filterCat(this,'religious')">🕌 ديني</button>
       <button class="chip" onclick="filterCat(this,'cultural')">🏛️ ثقافي</button>
       <button class="chip" onclick="filterCat(this,'entertainment')">🎡 ترفيه</button>
@@ -60,8 +59,8 @@
     <div class="places-list" id="placesList"></div>
 
     <div class="sidebar-footer">
-<a id="loginBtn" class="footer-btn" href="#">🔐 تسجيل الدخول</a>
-<a id="adminBtn" href="pages/admin.html" class="footer-btn admin">⚙️ لوحة الإدارة</a>
+      <a id="loginBtn" class="footer-btn" href="#">🔐 تسجيل الدخول</a>
+      <a id="adminBtn" href="pages/admin.html" class="footer-btn admin hidden">⚙️ لوحة الإدارة</a>
     </div>
   </aside>
 
@@ -74,6 +73,10 @@
         <span></span><span></span><span></span>
       </button>
     </header>
+
+    <!-- Category Tabs for Mobile -->
+    
+
     <div class="bottom-sheet" id="bottomSheet">
       <div class="bs-handle"></div>
       <div class="bs-header">
@@ -83,8 +86,12 @@
       <div class="bs-cards" id="bsCards"></div>
     </div>
   </main>
-    <button class="chatbot-fab" id="chatbotFab" onclick="openChatbot()">💬</button>
- <div class="chatbot" id="chatbot">
+
+  <!-- Chatbot FAB -->
+  <button class="chatbot-fab" id="chatbotFab" onclick="openChatbot()">💬</button>
+
+  <!-- Chatbot Window -->
+  <div class="chatbot" id="chatbot">
     <div class="chatbot-header">
       <div class="cb-info">
         <div class="cb-avatar">م</div>
@@ -93,7 +100,10 @@
           <div class="cb-status">● متاح الآن</div>
         </div>
       </div>
-      <div style="display:flex;gap:6px;align-items:center;"><button onclick="clearChat()" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-muted);font-size:.7rem;padding:3px 8px;cursor:pointer;font-family:Cairo,sans-serif;">مسح</button><button class="cb-close" onclick="closeChatbot()">✕</button></div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button onclick="clearChat()" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-muted);font-size:.7rem;padding:3px 8px;cursor:pointer;font-family:Cairo,sans-serif;">مسح</button>
+        <button class="cb-close" onclick="closeChatbot()">✕</button>
+      </div>
     </div>
     <div class="chatbot-body" id="chatbotBody">
       <div class="cb-msg bot">
@@ -122,21 +132,26 @@
     </div>
     <div class="detail-body">
       <h2 class="detail-name" id="detailName"></h2>
-       <button class="daction" onclick="getDirections()">🗺️ الاتجاهات</button>
-        <button class="daction" onclick="savePlace()">⭐ حفظ</button>
-        <button class="daction" onclick="openReview()">✏️ تقييم</button>
-        <button class="daction" onclick="triggerImageUpload()">📷 صورة</button>
       <div class="detail-meta">
         <span class="detail-rating" id="detailRating"></span>
         <span class="detail-hours" id="detailHours"></span>
       </div>
       <p class="detail-desc" id="detailDesc"></p>
+      
+      <!-- Reviews Section -->
+      <div class="detail-reviews">
+        <h4 class="reviews-title">📝 التقييمات والمراجعات</h4>
+        <div class="reviews-list" id="reviewsList">
+          <p class="no-reviews">لا توجد تقييمات بعد. كن أول من يقيم!</p>
+        </div>
+      </div>
+      
       <div class="detail-actions">
+        <button class="daction" onclick="getDirections()">🗺️ الاتجاهات</button>
+        <button class="daction" onclick="openReview()">✏️ تقييم</button>
+      </div>
     </div>
   </div>
-
-  <!-- Chatbot -->
- 
 
   <!-- Review Modal -->
   <div class="modal-overlay" id="reviewOverlay" onclick="closeReview()">
