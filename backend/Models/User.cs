@@ -1,4 +1,5 @@
 namespace DiscoverMadina.Models;
+
 public class User
 {
     public int Id { get; set; }
@@ -8,5 +9,4 @@ public class User
     public string PreferredLanguage { get; set; } = "ar";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public ICollection<Review> Reviews { get; set; } = new List<Review>();
-    public ICollection<ChatLog> ChatLogs { get; set; } = new List<ChatLog>();
 }

@@ -9,7 +9,7 @@ namespace DiscoverMadina.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "superadmin")]
+[Authorize(Roles = "admin")] // Only admin can access
 public class AdminsController : ControllerBase
 {
     private readonly IAdminRepository _adminRepo;
@@ -31,23 +31,22 @@ public class AdminsController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateAdminDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Username) || string.IsNullOrWhiteSpace(dto.Password))
-            return BadRequest(new { message = "اسم المستخدم وكلمة المرور مطلوبان" });
+            return BadRequest(new { message = "Username and password required" });
 
         if (dto.Password.Length < 6)
-            return BadRequest(new { message = "كلمة المرور 6 أحرف على الأقل" });
+            return BadRequest(new { message = "Password must be at least 6 characters" });
 
         var existing = await _adminRepo.GetByUsernameAsync(dto.Username);
         if (existing != null)
-            return Conflict(new { message = "اسم المستخدم موجود بالفعل" });
+            return Conflict(new { message = "Username already exists" });
 
-        // Get current admin ID from token
         var currentAdminId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         var admin = new Admin
         {
             Username = dto.Username,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-            Role = dto.Role,
+            Role = "admin", // Always admin now
             CreatedBy = currentAdminId != null ? int.Parse(currentAdminId) : null
         };
 
@@ -58,33 +57,14 @@ public class AdminsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
-        // Don't allow deleting yourself
         var currentAdminId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (currentAdminId == id.ToString())
-            return BadRequest(new { message = "لا يمكن حذف حسابك الحالي" });
+            return BadRequest(new { message = "Cannot delete your own account" });
 
         var admin = await _adminRepo.GetByIdAsync(id);
         if (admin == null) return NotFound();
-        
-        // Don't allow deleting the last superadmin
-        if (admin.Role == "superadmin")
-        {
-            var allAdmins = await _adminRepo.GetAllAsync();
-            if (allAdmins.Count(a => a.Role == "superadmin") <= 1)
-                return BadRequest(new { message = "لا يمكن حذف آخر مشرف عام" });
-        }
 
         var deleted = await _adminRepo.DeleteAsync(id);
         return deleted ? NoContent() : NotFound();
-    }
-
-    [HttpPatch("{id}/password")]
-    public async Task<IActionResult> UpdatePassword(int id, [FromBody] string newPassword)
-    {
-        if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
-            return BadRequest(new { message = "كلمة المرور 6 أحرف على الأقل" });
-
-        var updated = await _adminRepo.UpdatePasswordAsync(id, BCrypt.Net.BCrypt.HashPassword(newPassword));
-        return updated ? NoContent() : NotFound();
     }
 }

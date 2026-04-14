@@ -22,7 +22,8 @@ namespace DiscoverMadina.Migrations
                     Username = table.Column<string>(type: "TEXT", nullable: false),
                     PasswordHash = table.Column<string>(type: "TEXT", nullable: false),
                     Role = table.Column<string>(type: "TEXT", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    CreatedBy = table.Column<int>(type: "INTEGER", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -71,25 +72,26 @@ namespace DiscoverMadina.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ChatLogs",
+                name: "AttractionPhotos",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    Question = table.Column<string>(type: "TEXT", nullable: false),
-                    Response = table.Column<string>(type: "TEXT", nullable: false),
-                    Timestamp = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    UserId = table.Column<int>(type: "INTEGER", nullable: true)
+                    AttractionId = table.Column<int>(type: "INTEGER", nullable: false),
+                    ImageUrl = table.Column<string>(type: "TEXT", nullable: false),
+                    IsPrimary = table.Column<bool>(type: "INTEGER", nullable: false),
+                    DisplayOrder = table.Column<int>(type: "INTEGER", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ChatLogs", x => x.Id);
+                    table.PrimaryKey("PK_AttractionPhotos", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_ChatLogs_Users_UserId",
-                        column: x => x.UserId,
-                        principalTable: "Users",
+                        name: "FK_AttractionPhotos_Attractions_AttractionId",
+                        column: x => x.AttractionId,
+                        principalTable: "Attractions",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -124,8 +126,8 @@ namespace DiscoverMadina.Migrations
 
             migrationBuilder.InsertData(
                 table: "Admins",
-                columns: new[] { "Id", "CreatedAt", "PasswordHash", "Role", "Username" },
-                values: new object[] { 1, new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "$2a$11$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi", "superadmin", "admin01" });
+                columns: new[] { "Id", "CreatedAt", "CreatedBy", "PasswordHash", "Role", "Username" },
+                values: new object[] { 1, new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "$$2a$11$yQ0Z1X2c3V4b5N6m8K9J0eW1R2T3Y4U5I6O7P8A9S0D1F2G3H4J5K6L7", "admin", "admin" });
 
             migrationBuilder.InsertData(
                 table: "Attractions",
@@ -140,9 +142,9 @@ namespace DiscoverMadina.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_ChatLogs_UserId",
-                table: "ChatLogs",
-                column: "UserId");
+                name: "IX_AttractionPhotos_AttractionId",
+                table: "AttractionPhotos",
+                column: "AttractionId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Reviews_AttractionId",
@@ -162,7 +164,7 @@ namespace DiscoverMadina.Migrations
                 name: "Admins");
 
             migrationBuilder.DropTable(
-                name: "ChatLogs");
+                name: "AttractionPhotos");
 
             migrationBuilder.DropTable(
                 name: "Reviews");

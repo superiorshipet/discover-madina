@@ -50,9 +50,9 @@ namespace DiscoverMadina.Migrations
                         {
                             Id = 1,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            PasswordHash = "$2a$11$PX3ITuqB95TE.dNFJ8gU2.riyGgJgS7GHk/K1w9GQapHdK0rpJ77G",
-                            Role = "superadmin",
-                            Username = "superior"
+                            PasswordHash = "$$2a$11$yQ0Z1X2c3V4b5N6m8K9J0eW1R2T3Y4U5I6O7P8A9S0D1F2G3H4J5K6L7",
+                            Role = "admin",
+                            Username = "admin"
                         });
                 });
 
@@ -217,33 +217,6 @@ namespace DiscoverMadina.Migrations
                     b.ToTable("AttractionPhotos");
                 });
 
-            modelBuilder.Entity("DiscoverMadina.Models.ChatLog", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Question")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Response")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("Timestamp")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("ChatLogs");
-                });
-
             modelBuilder.Entity("DiscoverMadina.Models.Review", b =>
                 {
                     b.Property<int>("Id")
@@ -320,16 +293,6 @@ namespace DiscoverMadina.Migrations
                     b.Navigation("Attraction");
                 });
 
-            modelBuilder.Entity("DiscoverMadina.Models.ChatLog", b =>
-                {
-                    b.HasOne("DiscoverMadina.Models.User", "User")
-                        .WithMany("ChatLogs")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("DiscoverMadina.Models.Review", b =>
                 {
                     b.HasOne("DiscoverMadina.Models.Attraction", "Attraction")
@@ -358,8 +321,6 @@ namespace DiscoverMadina.Migrations
 
             modelBuilder.Entity("DiscoverMadina.Models.User", b =>
                 {
-                    b.Navigation("ChatLogs");
-
                     b.Navigation("Reviews");
                 });
 #pragma warning restore 612, 618
