@@ -1,18 +1,25 @@
 // ============================================
 // DISCOVER MADINA — Main App Logic
 // ============================================
+
 let map, markers = [], currentFilter = 'all', currentPlace = null, currentRating = 0;
 let chatbotOpen = false;
 let chatHistory = [];
+
+// Routing state
 let userLocation = null;
 let userLocationMarker = null;
 let routeLayer = null;
 
-// ── AUTH ──────────────────────────────────────
+// Gallery state
+let currentPhotoIndex = 0;
+let currentPhotos = [];
+
+// Auth functions
 function getToken()    { return localStorage.getItem('token'); }
 function getUsername() { return localStorage.getItem('username'); }
 function getRole()     { return localStorage.getItem('role') || 'guest'; }
-function isLoggedIn()  { return getRole() !== null; }
+function isLoggedIn()  { return getRole() !== 'guest' && getToken(); }
 function isAdmin()     { return getRole() === 'admin' || getRole() === 'superadmin'; }
 
 function toggleAdminBtn() {
@@ -40,18 +47,17 @@ function authFetch(url, options = {}) {
   });
 }
 
-// ── INIT ──────────────────────────────────────
+// Initialize
 document.addEventListener('DOMContentLoaded', async () => {
   if (!initAuthGuard()) return;
 
-  const role = getRole();
   const username = getUsername();
-
   const loginBtn = document.getElementById('loginBtn');
   if (loginBtn) {
     if (isLoggedIn() && username) {
-      loginBtn.innerHTML = `🔐 تسجيل الخروج (${username})`;
+      loginBtn.innerHTML = `🚪 تسجيل الخروج (${username})`;
       loginBtn.onclick = logout;
+      loginBtn.href = '#';
     } else {
       loginBtn.textContent = '🔐 تسجيل الدخول';
       loginBtn.href = 'pages/login.html';
@@ -66,29 +72,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     welcomeMsg.style.display = 'block';
   }
 
-  const userBtn = document.querySelector('.icon-btn[title="حسابي"]');
-  if (userBtn && username && role !== 'guest') {
-    userBtn.textContent = username[0].toUpperCase();
-    userBtn.title = username;
-    userBtn.style.background = 'linear-gradient(135deg,var(--gold-dim),var(--gold))';
-    userBtn.style.color = 'var(--bg-deep)';
-    userBtn.style.fontWeight = '700';
-    userBtn.style.fontSize = '.85rem';
-    userBtn.href = '#';
-    userBtn.onclick = (e) => { e.preventDefault(); showUserMenu(); };
-  }
-
   toggleAdminBtn();
   initMap();
+  initDraggableSidebar();
+  initDraggableSheet();
 
   try {
     await loadAttractionsFromAPI();
   } catch (e) {
     console.error('App init error:', e);
   }
-
-  // ✅ Single interval — not inside loadAttractionsFromAPI
-  setInterval(loadAttractionsFromAPI, 30000);
 
   setTimeout(() => {
     const splash = document.getElementById('splash');
@@ -97,29 +90,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       setTimeout(() => { if (map) map.invalidateSize(true); }, 100);
     }
   }, 100);
-
-  // Close sidebar when clicking outside on mobile
-  document.addEventListener('click', (e) => {
-    const sidebar = document.getElementById('sidebar');
-    const menuBtn = document.querySelector('.menu-btn');
-    if (sidebar && sidebar.classList.contains('mobile-open')) {
-      if (!sidebar.contains(e.target) && !menuBtn?.contains(e.target)) {
-        sidebar.classList.remove('mobile-open');
-        setTimeout(() => { if (map) map.invalidateSize(); }, 220);
-      }
-    }
-  });
 });
 
-// ── MAP ───────────────────────────────────────
+// Map initialization
 function initMap() {
   map = L.map('map', { zoomControl: false, attributionControl: false }).setView([24.4672, 39.6111], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
   L.control.zoom({ position: 'bottomright' }).addTo(map);
   window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
+  
+  map.on('click', function() {
+    if (window.innerWidth <= 768) {
+      closeDetail();
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar) sidebar.classList.remove('mobile-open');
+    }
+  });
 }
 
-// ── LOAD FROM API ─────────────────────────────
+// Load attractions from API
 async function loadAttractionsFromAPI() {
   try {
     const res = await fetch(`${API_BASE}/attractions`);
@@ -132,6 +121,7 @@ async function loadAttractionsFromAPI() {
           lat: parseFloat(a.latitude), lng: parseFloat(a.longitude),
           rating: a.ratingAvg || 0, reviews: 0, hours: a.openingHours,
           description: a.description, imageUrl: a.imageUrl,
+          photos: a.photos || [],
           tags: [a.category], featured: a.isFeatured
         }));
         renderPlacesList(window.LIVE_PLACES);
@@ -158,19 +148,18 @@ function renderMarkers(places) {
     });
     const m = L.marker([p.lat, p.lng], { icon })
       .addTo(map)
-      .on('click', () => openDetail(p));
+      .on('click', () => {
+        if (window.innerWidth <= 768) {
+          const sidebar = document.getElementById('sidebar');
+          if (sidebar) sidebar.classList.remove('mobile-open');
+        }
+        openDetail(p);
+      });
     markers.push(m);
   });
 }
 
-// ── SIDEBAR TOGGLE ────────────────────────────
-function toggleSidebar() {
-  const sidebar = document.getElementById('sidebar');
-  sidebar.classList.toggle('mobile-open');
-  setTimeout(() => { if (map) map.invalidateSize(); }, 220);
-}
-
-// ── FILTER ────────────────────────────────────
+// Filter
 function filterCat(btn, cat) {
   currentFilter = cat;
   document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
@@ -196,7 +185,7 @@ function applyFilter() {
 }
 function doSearch() { applyFilter(); }
 
-// ── PLACES LIST ───────────────────────────────
+// Places list
 function renderPlacesList(places) {
   const el = document.getElementById('placesList');
   if (!places.length) {
@@ -206,7 +195,7 @@ function renderPlacesList(places) {
   el.innerHTML = places.map(p => `
     <div class="place-card" onclick="openDetailById(${p.id})">
       <div class="pc-icon ${p.category}">${p.imageUrl
-        ? `<img src="${window.location.origin}${p.imageUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;" onerror="this.parentElement.textContent='${p.icon}'">`
+        ? `<img src="${window.location.origin}${p.imageUrl}" onerror="this.parentElement.textContent='${p.icon}'">`
         : p.icon}</div>
       <div class="pc-body">
         <div class="pc-name">${p.name}</div>
@@ -219,17 +208,64 @@ function renderPlacesList(places) {
 
 function renderBottomSheet(places) {
   const el = document.getElementById('bsCards');
+  if (!places.length) {
+    el.innerHTML = '<p style="color:var(--text-dim);padding:16px;text-align:center;">لا توجد أماكن مقترحة</p>';
+    return;
+  }
   el.innerHTML = places.map(p => `
     <div class="bs-card" onclick="openDetailById(${p.id})">
       <div class="bs-card-icon">${p.icon}</div>
       <div class="bs-card-name">${p.name}</div>
-      <div class="bs-card-meta">${p.hours}</div>
-      <div class="bs-card-rating">★ ${p.rating}</div>
+      <div class="bs-card-meta">${p.hours || '24/7'}</div>
+      <div class="bs-card-rating">★ ${p.rating || '4.5'}</div>
     </div>
   `).join('');
+  if (!document.querySelector('.bs-drag-hint')) {
+    const hint = document.createElement('div');
+    hint.className = 'bs-drag-hint';
+    hint.textContent = '↑ اسحب للأعلى للمزيد ↑';
+    el.parentElement.appendChild(hint);
+  }
 }
 
-// ── DETAIL PANEL ──────────────────────────────
+// ============================================
+// REVIEWS - Load approved reviews for a place
+// ============================================
+async function loadReviewsForPlace(attractionId) {
+  const reviewsContainer = document.getElementById('reviewsList');
+  if (!reviewsContainer) return;
+  
+  try {
+    const res = await fetch(`${API_BASE}/reviews/attraction/${attractionId}`);
+    if (!res.ok) throw new Error('Failed to load reviews');
+    
+    const reviews = await res.json();
+    const approvedReviews = reviews.filter(r => r.status === 'approved');
+    
+    if (approvedReviews.length === 0) {
+      reviewsContainer.innerHTML = '<p class="no-reviews">لا توجد تقييمات بعد. كن أول من يقيم!</p>';
+      return;
+    }
+    
+    approvedReviews.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    reviewsContainer.innerHTML = approvedReviews.map(r => `
+      <div class="review-item">
+        <div class="review-header">
+          <span class="review-user">👤 ${r.username || 'مستخدم'}</span>
+          <span class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
+        </div>
+        <div class="review-comment">${r.comment || 'بدون تعليق'}</div>
+        <div class="review-date">${new Date(r.createdAt).toLocaleDateString('ar-SA')}</div>
+      </div>
+    `).join('');
+  } catch (e) {
+    console.error('Failed to load reviews:', e);
+    reviewsContainer.innerHTML = '<p class="no-reviews">تعذر تحميل التقييمات</p>';
+  }
+}
+
+// Detail panel with gallery
 function openDetailById(id) {
   const place = getActivePlaces().find(p => p.id === id);
   if (place) openDetail(place);
@@ -237,9 +273,28 @@ function openDetailById(id) {
 
 function openDetail(place) {
   currentPlace = place;
+  currentPhotos = place.photos || [];
+  currentPhotoIndex = 0;
+  updateDetailContent();
+  document.getElementById('detailPanel').classList.add('open');
+  map.setView([place.lat, place.lng], 15, { animate: true });
+  clearRoute();
+  
+  loadReviewsForPlace(place.id);
+  
+  if (window.innerWidth <= 768) {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.classList.remove('mobile-open');
+  }
+}
+
+function updateDetailContent() {
+  const place = currentPlace;
   const imgEl = document.getElementById('detailImg');
-  if (place.imageUrl) {
-    imgEl.innerHTML = `<img src="${window.location.origin}${place.imageUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.textContent='${place.icon}'">`;
+  if (currentPhotos.length > 0) {
+    renderGallery();
+  } else if (place.imageUrl) {
+    imgEl.innerHTML = `<img src="${window.location.origin}${place.imageUrl}" onerror="this.parentElement.textContent='${place.icon}'">`;
   } else {
     imgEl.textContent = place.icon;
   }
@@ -248,18 +303,65 @@ function openDetail(place) {
   document.getElementById('detailRating').textContent = `★ ${place.rating}`;
   document.getElementById('detailHours').textContent = `⏰ ${place.hours}`;
   document.getElementById('detailDesc').textContent = place.description;
-  document.getElementById('detailPanel').classList.add('open');
-  map.setView([place.lat, place.lng], 15, { animate: true });
-  clearRoute();
 }
 
+function renderGallery() {
+  const imgEl = document.getElementById('detailImg');
+  const currentPhoto = currentPhotos[currentPhotoIndex];
+  let html = `
+    <div style="position:relative;width:100%;height:100%;">
+      <img src="${currentPhoto.imageUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.parentElement.textContent='${currentPlace.icon}'">
+  `;
+  if (currentPhotos.length > 1) {
+    html += `
+      <button class="gallery-nav prev" onclick="prevPhoto()">←</button>
+      <button class="gallery-nav next" onclick="nextPhoto()">→</button>
+      <div class="photo-counter">${currentPhotoIndex + 1} / ${currentPhotos.length}</div>
+      <div class="gallery-dots">
+        ${currentPhotos.map((_, i) => `<div class="gallery-dot ${i === currentPhotoIndex ? 'active' : ''}" onclick="goToPhoto(${i})"></div>`).join('')}
+      </div>
+    `;
+  }
+  html += '</div>';
+  imgEl.innerHTML = html;
+}
+
+function nextPhoto() {
+  if (currentPhotos.length > 0) {
+    currentPhotoIndex = (currentPhotoIndex + 1) % currentPhotos.length;
+    renderGallery();
+  }
+}
+function prevPhoto() {
+  if (currentPhotos.length > 0) {
+    currentPhotoIndex = (currentPhotoIndex - 1 + currentPhotos.length) % currentPhotos.length;
+    renderGallery();
+  }
+}
+function goToPhoto(index) {
+  if (currentPhotos.length > 0 && index >= 0 && index < currentPhotos.length) {
+    currentPhotoIndex = index;
+    renderGallery();
+  }
+}
 function closeDetail() {
   document.getElementById('detailPanel').classList.remove('open');
-  clearRoute();
   currentPlace = null;
+  currentPhotos = [];
+  currentPhotoIndex = 0;
+  
+  const reviewsContainer = document.getElementById('reviewsList');
+  if (reviewsContainer) {
+    reviewsContainer.innerHTML = '<p class="no-reviews">لا توجد تقييمات بعد. كن أول من يقيم!</p>';
+  }
+  
+  if (window.innerWidth <= 768) {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.classList.remove('mobile-open');
+  }
 }
 
-// ── GEOLOCATION ───────────────────────────────
+// Geolocation
 function locateUser() {
   if (!navigator.geolocation) { showToast('الموقع غير مدعوم في هذا المتصفح'); return; }
   showToast('📍 جاري تحديد موقعك...');
@@ -272,9 +374,9 @@ function locateUser() {
       userLocationMarker = L.marker([lat, lng], {
         icon: L.divIcon({
           html: `<div style="position:relative;width:22px;height:22px;">
-            <div style="position:absolute;top:0;left:0;width:22px;height:22px;border-radius:50%;background:rgba(74,144,217,0.25);animation:userPulse 1.8s ease-out infinite;"></div>
-            <div style="position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#4A90D9;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);"></div>
-          </div>`,
+              <div style="position:absolute;top:0;left:0;width:22px;height:22px;border-radius:50%;background:rgba(74,144,217,0.25);animation:userPulse 1.8s ease-out infinite;"></div>
+              <div style="position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#4A90D9;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);"></div>
+            </div>`,
           className: '', iconSize: [22, 22], iconAnchor: [11, 11]
         })
       }).addTo(map).bindPopup('📍 أنت هنا').openPopup();
@@ -289,9 +391,19 @@ function locateUser() {
   );
 }
 
-// ── DIRECTIONS ────────────────────────────────
+// Directions
 async function getDirections() {
   if (!currentPlace) return;
+
+  const placeLat = currentPlace.lat;
+  const placeLng = currentPlace.lng;
+  const placeName = currentPlace.name;
+
+  if (window.innerWidth <= 768) {
+    closeDetail();
+    currentPlace = { name: placeName, lat: placeLat, lng: placeLng };
+  }
+
   if (!userLocation) {
     showToast('📍 يتم تحديد موقعك أولاً...');
     navigator.geolocation.getCurrentPosition(
@@ -321,12 +433,17 @@ async function drawRoute() {
   if (!userLocation || !currentPlace) return;
   clearRoute();
   showToast('🗺️ جاري حساب أقصر طريق...');
+  const start = [userLocation.lng, userLocation.lat];
+  const end   = [currentPlace.lng, currentPlace.lat];
   try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${userLocation.lng},${userLocation.lat};${currentPlace.lng},${currentPlace.lat}?overview=full&geometries=geojson`;
+    const url = `https://router.project-osrm.org/route/v1/driving/${start[0]},${start[1]};${end[0]},${end[1]}?overview=full&geometries=geojson`;
     const res = await fetch(url);
     if (!res.ok) throw new Error('Route service error');
     const data = await res.json();
-    if (!data.routes || data.routes.length === 0) { showToast('⚠️ لم يتم العثور على مسار'); return; }
+    if (!data.routes || data.routes.length === 0) {
+      showToast('⚠️ لم يتم العثور على مسار');
+      return;
+    }
     const route = data.routes[0];
     const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
     const distKm  = (route.distance / 1000).toFixed(1);
@@ -351,23 +468,23 @@ function showRouteBanner(distKm, distMin) {
   if (old) old.remove();
   const banner = document.createElement('div');
   banner.id = 'routeBanner';
-  banner.style.cssText = `position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--bg-mid,#1e2330);border:1px solid var(--border,#2e3547);border-radius:16px;padding:12px 20px;display:flex;align-items:center;gap:16px;z-index:800;box-shadow:0 4px 20px rgba(0,0,0,0.5);direction:rtl;font-family:'Cairo',sans-serif;min-width:260px;`;
+  banner.style.cssText = `position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--bg-mid);border:1px solid var(--border);border-radius:16px;padding:12px 20px;display:flex;align-items:center;gap:16px;z-index:800;box-shadow:0 4px 20px rgba(0,0,0,0.5);direction:rtl;font-family:'Cairo',sans-serif;min-width:260px;`;
   banner.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-size:1rem;font-weight:700;color:var(--gold,#2ECC8A);">🗺️ ${distKm} كم</span>
-      <span style="font-size:.8rem;color:var(--text-muted,#8899aa);">⏱ ${distMin} دقيقة تقريباً</span>
+      <span style="font-size:1rem;font-weight:700;color:var(--gold);">🗺️ ${distKm} كم</span>
+      <span style="font-size:.8rem;color:var(--text-muted);">⏱ ${distMin} دقيقة تقريباً</span>
     </div>
-    <div style="width:1px;height:36px;background:var(--border,#2e3547);"></div>
-    <div style="font-size:.82rem;color:var(--text,#cdd6f4);flex:1;">إلى <strong>${currentPlace.name}</strong></div>
-    <button onclick="clearRoute()" style="background:none;border:none;color:var(--text-muted,#8899aa);font-size:1.1rem;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
+    <div style="width:1px;height:36px;background:var(--border);"></div>
+    <div style="font-size:.82rem;color:var(--text-main);flex:1;">إلى <strong>${currentPlace.name}</strong></div>
+    <button onclick="clearRoute()" style="background:none;border:none;color:var(--text-muted);font-size:1.1rem;cursor:pointer;">✕</button>
   `;
   document.body.appendChild(banner);
 }
 
-// ── SAVE PLACE ────────────────────────────────
+// Save place
 function savePlace() {
   if (!currentPlace) return;
-  if (!isLoggedIn() || getRole() === 'guest') {
+  if (!isLoggedIn()) {
     showToast('🔐 سجّل دخولك أولاً لحفظ الأماكن');
     setTimeout(() => window.location.href = 'pages/login.html', 1500);
     return;
@@ -375,38 +492,41 @@ function savePlace() {
   showToast(`✅ تم حفظ "${currentPlace.name}"`);
 }
 
-// ── IMAGE UPLOAD ──────────────────────────────
+// Multiple image upload
 function triggerImageUpload() {
   if (!currentPlace) return;
   if (!getToken()) { showToast('🔐 يجب تسجيل الدخول لرفع صورة'); return; }
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/jpeg,image/png,image/webp';
+  input.multiple = true;
   input.onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    showToast('⏳ جاري رفع الصورة...');
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    if (files.length > 5) { showToast('⚠️ الحد الأقصى 5 صور'); return; }
+    showToast(`⏳ جاري رفع ${files.length} صور...`);
     const formData = new FormData();
-    formData.append('image', file);
+    files.forEach(file => formData.append('photos', file));
     try {
-      const res = await fetch(`${API_BASE}/attractions/${currentPlace.id}/image`, {
+      const res = await fetch(`${API_BASE}/attractions/${currentPlace.id}/photos`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${getToken()}` },
         body: formData
       });
       if (res.ok) {
-        const data = await res.json();
-        currentPlace.imageUrl = data.imageUrl;
-        openDetail(currentPlace);
-        showToast('✅ تم رفع الصورة بنجاح');
-        loadAttractionsFromAPI();
-      } else { showToast('❌ فشل رفع الصورة'); }
+        showToast('✅ تم رفع الصور بنجاح');
+        await loadAttractionsFromAPI();
+        const updated = getActivePlaces().find(p => p.id === currentPlace.id);
+        if (updated) openDetail(updated);
+      } else {
+        showToast('❌ فشل رفع الصور');
+      }
     } catch { showToast('❌ خطأ في الاتصال'); }
   };
   input.click();
 }
 
-// ── CHATBOT ───────────────────────────────────
+// Chatbot
 function openChatbot() {
   chatbotOpen = true;
   document.getElementById('chatbot').classList.add('open');
@@ -446,7 +566,9 @@ async function sendChatMessage(text) {
   chatHistory.push({ role: 'user', content: text });
   const input = document.getElementById('chatInput');
   const sendBtn = document.querySelector('.send-btn');
-  input.disabled = true; sendBtn.style.opacity = '0.5'; sendBtn.disabled = true;
+  input.disabled = true;
+  sendBtn.style.opacity = '0.5';
+  sendBtn.disabled = true;
   const typingId = 'typing-' + Date.now();
   const body = document.getElementById('chatbotBody');
   body.innerHTML += `<div class="cb-msg bot" id="${typingId}"><div class="cb-bubble typing-indicator"><span></span><span></span><span></span></div></div>`;
@@ -464,15 +586,21 @@ async function sendChatMessage(text) {
       const reply = data.reply || 'عذراً، لم أتمكن من الإجابة.';
       chatHistory.push({ role: 'assistant', content: reply });
       appendChatMsg(reply, 'bot');
-    } else { throw new Error(`HTTP ${response.status}`); }
+    } else {
+      throw new Error(`HTTP ${response.status}`);
+    }
   } catch (error) {
+    console.error('Chat API error:', error);
     const typingEl = document.getElementById(typingId);
     if (typingEl) typingEl.remove();
     const fallback = 'عذراً، مشكلة في الاتصال بالمساعد الذكي.';
     appendChatMsg(fallback, 'bot');
     chatHistory.push({ role: 'assistant', content: fallback });
   } finally {
-    input.disabled = false; sendBtn.style.opacity = '1'; sendBtn.disabled = false; input.focus();
+    input.disabled = false;
+    sendBtn.style.opacity = '1';
+    sendBtn.disabled = false;
+    input.focus();
   }
 }
 function appendChatMsg(text, role) {
@@ -484,7 +612,7 @@ function appendChatMsg(text, role) {
   body.scrollTop = body.scrollHeight;
 }
 
-// ── USER MENU ─────────────────────────────────
+// User menu
 function showUserMenu() {
   const existing = document.getElementById('userMenu');
   if (existing) { existing.remove(); return; }
@@ -493,16 +621,19 @@ function showUserMenu() {
   menu.style.cssText = `position:fixed;top:64px;left:20px;background:var(--bg-mid);border:1px solid var(--border);border-radius:var(--radius);padding:12px;z-index:1000;min-width:160px;box-shadow:var(--shadow);direction:rtl;`;
   menu.innerHTML = `
     <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">👤 ${getUsername()}</div>
-    <button onclick="logout()" style="width:100%;background:none;border:none;color:var(--red,#e05555);font-family:'Cairo',sans-serif;font-size:.88rem;cursor:pointer;text-align:right;padding:4px 0;">تسجيل الخروج</button>
+    <button onclick="logout()" style="width:100%;background:none;border:none;color:var(--red);font-family:'Cairo',sans-serif;font-size:.88rem;cursor:pointer;text-align:right;padding:4px 0;">تسجيل الخروج</button>
   `;
   document.body.appendChild(menu);
   setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 10);
 }
-function logout() { localStorage.clear(); window.location.href = 'pages/login.html'; }
+function logout() {
+  localStorage.clear();
+  window.location.href = 'pages/login.html';
+}
 
-// ── REVIEW MODAL ──────────────────────────────
+// Review modal
 function openReview() {
-  if (!isLoggedIn() || getRole() === 'guest') {
+  if (!isLoggedIn()) {
     showToast('🔐 سجّل دخولك أولاً للتقييم');
     setTimeout(() => window.location.href = 'pages/login.html', 1500);
     return;
@@ -519,18 +650,35 @@ function updateStars(v) {
 async function submitReview() {
   const text = document.getElementById('reviewText').value.trim();
   if (!currentRating) { showToast('الرجاء اختيار تقييم'); return; }
+  if (!currentPlace) { showToast('حدث خطأ، حاول مرة أخرى'); return; }
+  
+  const username = getUsername();
+  
   try {
-    await authFetch(`${API_BASE}/reviews`, {
+    const res = await authFetch(`${API_BASE}/reviews`, {
       method: 'POST',
-      body: JSON.stringify({ rating: currentRating, comment: text, attractionId: currentPlace?.id, userId: 1 })
+      body: JSON.stringify({ 
+        rating: currentRating, 
+        comment: text, 
+        attractionId: currentPlace.id,
+        username: username
+      })
     });
-  } catch(e) {}
-  closeReview();
-  document.getElementById('reviewText').value = '';
-  showToast('✅ تم إرسال تقييمك، شكراً!');
+    
+    if (res.ok) {
+      showToast('✅ تم إرسال تقييمك للمراجعة. سيظهر بعد الموافقة عليه.');
+      closeReview();
+      document.getElementById('reviewText').value = '';
+      setTimeout(() => loadReviewsForPlace(currentPlace.id), 500);
+    } else {
+      showToast('❌ فشل إرسال التقييم');
+    }
+  } catch(e) {
+    showToast('❌ خطأ في الاتصال');
+  }
 }
 
-// ── TOAST ─────────────────────────────────────
+// Toast
 function showToast(msg) {
   let t = document.getElementById('toast');
   if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
@@ -538,3 +686,220 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
 }
+
+// ============================================
+// DRAGGABLE BOTTOM SHEET
+// ============================================
+let bottomSheetState = 'collapsed';
+let startY = 0, currentSheetHeight = 0, isDraggingSheet = false;
+const sheet = document.getElementById('bottomSheet');
+const sheetHandle = document.querySelector('.bs-handle');
+const COLLAPSED_HEIGHT = 120, HALF_HEIGHT = 280, EXPANDED_HEIGHT = 420;
+
+function initDraggableSheet() {
+  if (!sheet || !sheetHandle) return;
+  sheet.style.height = COLLAPSED_HEIGHT + 'px';
+  sheet.style.transition = 'height 0.3s ease';
+  sheet.style.overflow = 'hidden';
+  sheetHandle.addEventListener('touchstart', startSheetDrag);
+  sheetHandle.addEventListener('touchmove', dragSheet);
+  sheetHandle.addEventListener('touchend', endSheetDrag);
+  sheetHandle.addEventListener('mousedown', startSheetDrag);
+  window.addEventListener('mousemove', dragSheet);
+  window.addEventListener('mouseup', endSheetDrag);
+  sheetHandle.addEventListener('click', toggleSheet);
+  updateMapPadding();
+}
+function startSheetDrag(e) {
+  isDraggingSheet = true;
+  startY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+  currentSheetHeight = sheet.offsetHeight;
+  sheet.style.transition = 'none';
+  e.preventDefault();
+}
+function dragSheet(e) {
+  if (!isDraggingSheet) return;
+  e.preventDefault();
+  const currentY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+  const deltaY = startY - currentY;
+  let newHeight = currentSheetHeight + deltaY;
+  newHeight = Math.max(COLLAPSED_HEIGHT, Math.min(EXPANDED_HEIGHT, newHeight));
+  sheet.style.height = newHeight + 'px';
+  updateSheetContent(newHeight);
+}
+function endSheetDrag(e) {
+  if (!isDraggingSheet) return;
+  isDraggingSheet = false;
+  sheet.style.transition = 'height 0.3s ease';
+  const finalHeight = sheet.offsetHeight;
+  const diffCollapsed = Math.abs(finalHeight - COLLAPSED_HEIGHT);
+  const diffHalf = Math.abs(finalHeight - HALF_HEIGHT);
+  const diffExpanded = Math.abs(finalHeight - EXPANDED_HEIGHT);
+  const minDiff = Math.min(diffCollapsed, diffHalf, diffExpanded);
+  if (minDiff === diffCollapsed) setSheetState('collapsed');
+  else if (minDiff === diffHalf) setSheetState('half');
+  else setSheetState('expanded');
+  updateMapPadding();
+}
+function toggleSheet() {
+  if (isDraggingSheet) return;
+  if (bottomSheetState === 'collapsed') setSheetState('half');
+  else if (bottomSheetState === 'half') setSheetState('expanded');
+  else setSheetState('collapsed');
+}
+function setSheetState(state) {
+  bottomSheetState = state;
+  if (state === 'collapsed') sheet.style.height = COLLAPSED_HEIGHT + 'px';
+  else if (state === 'half') sheet.style.height = HALF_HEIGHT + 'px';
+  else sheet.style.height = EXPANDED_HEIGHT + 'px';
+  updateSheetContent(sheet.offsetHeight);
+  updateMapPadding();
+}
+function updateSheetContent(height) {
+  const bsCards = document.getElementById('bsCards');
+  if (height >= EXPANDED_HEIGHT - 50) {
+    sheet.classList.add('expanded');
+    if (bsCards) { bsCards.style.flexWrap = 'wrap'; bsCards.style.overflowY = 'auto'; bsCards.style.maxHeight = (EXPANDED_HEIGHT - 80) + 'px'; }
+  } else {
+    sheet.classList.remove('expanded');
+    if (bsCards) { bsCards.style.flexWrap = 'nowrap'; bsCards.style.overflowX = 'auto'; bsCards.style.overflowY = 'hidden'; bsCards.style.maxHeight = 'none'; }
+  }
+}
+function updateMapPadding() {
+  if (!map) return;
+  const sheetHeight = sheet.offsetHeight;
+  map._container.style.paddingBottom = (sheetHeight - 20) + 'px';
+  map.invalidateSize();
+}
+
+// ============================================
+// FREELY DRAGGABLE SIDEBAR
+// ============================================
+let sidebarStartX = 0, sidebarCurrentWidth = 0, isDraggingSidebar = false;
+const SIDEBAR_MIN_WIDTH = 0;
+const SIDEBAR_MAX_WIDTH = 400;
+
+function initDraggableSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+  
+  const dragHandle = document.createElement('div');
+  dragHandle.className = 'sidebar-drag-handle';
+  dragHandle.innerHTML = '<span></span><span></span><span></span>';
+  sidebar.appendChild(dragHandle);
+  
+  sidebar.style.width = '340px';
+  sidebar.style.transition = 'none';
+  sidebar.style.position = 'relative';
+  
+  dragHandle.addEventListener('touchstart', startSidebarDrag);
+  dragHandle.addEventListener('touchmove', dragSidebar);
+  dragHandle.addEventListener('touchend', endSidebarDrag);
+  dragHandle.addEventListener('mousedown', startSidebarDrag);
+  window.addEventListener('mousemove', dragSidebar);
+  window.addEventListener('mouseup', endSidebarDrag);
+  
+  window.addEventListener('mouseup', () => {
+    if (map) setTimeout(() => map.invalidateSize(), 50);
+  });
+}
+
+function startSidebarDrag(e) {
+  const sidebar = document.getElementById('sidebar');
+  isDraggingSidebar = true;
+  sidebarStartX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+  sidebarCurrentWidth = sidebar.offsetWidth;
+  sidebar.style.transition = 'none';
+  document.body.style.cursor = 'ew-resize';
+  sidebar.classList.add('dragging');
+  e.preventDefault();
+  e.stopPropagation();
+}
+
+function dragSidebar(e) {
+  if (!isDraggingSidebar) return;
+  e.preventDefault();
+  const sidebar = document.getElementById('sidebar');
+  const currentX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+  const deltaX = sidebarStartX - currentX;
+  let newWidth = sidebarCurrentWidth + deltaX;
+  newWidth = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, newWidth));
+  sidebar.style.width = newWidth + 'px';
+  const opacity = Math.min(1, newWidth / 200);
+  const contentElements = sidebar.querySelectorAll('.sidebar-header, .search-wrap, .filter-chips, .places-list, .sidebar-footer');
+  contentElements.forEach(el => el.style.opacity = opacity);
+  if (map) map.invalidateSize();
+}
+
+function endSidebarDrag(e) {
+  if (!isDraggingSidebar) return;
+  const sidebar = document.getElementById('sidebar');
+  isDraggingSidebar = false;
+  document.body.style.cursor = '';
+  sidebar.classList.remove('dragging');
+  const toggleBtn = document.getElementById('toggleSidebarBtn');
+  if (toggleBtn) {
+    const currentWidth = sidebar.offsetWidth;
+    if (currentWidth < 100) {
+      toggleBtn.innerHTML = '▶';
+      toggleBtn.classList.add('collapsed');
+    } else {
+      toggleBtn.innerHTML = '◀';
+      toggleBtn.classList.remove('collapsed');
+    }
+  }
+  if (map) map.invalidateSize();
+}
+
+function toggleSidebarState() {
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('toggleSidebarBtn');
+  const currentWidth = sidebar.offsetWidth;
+  if (currentWidth < 100) {
+    const savedWidth = localStorage.getItem('sidebarWidth') || '340';
+    sidebar.style.width = savedWidth + 'px';
+    if (toggleBtn) {
+      toggleBtn.innerHTML = '◀';
+      toggleBtn.classList.remove('collapsed');
+    }
+  } else {
+    localStorage.setItem('sidebarWidth', currentWidth);
+    sidebar.style.width = '0px';
+    if (toggleBtn) {
+      toggleBtn.innerHTML = '▶';
+      toggleBtn.classList.add('collapsed');
+    }
+  }
+  const newWidth = sidebar.offsetWidth;
+  const opacity = Math.min(1, newWidth / 200);
+  const contentElements = sidebar.querySelectorAll('.sidebar-header, .search-wrap, .filter-chips, .places-list, .sidebar-footer');
+  contentElements.forEach(el => el.style.opacity = opacity);
+  setTimeout(() => { if (map) map.invalidateSize(); }, 50);
+}
+
+function toggleSidebar() {
+  if (window.innerWidth <= 768) {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('mobile-open');
+    setTimeout(() => map?.invalidateSize(), 250);
+  } else {
+    toggleSidebarState();
+  }
+}
+
+function toggleSidebarCollapse() {
+  toggleSidebarState();
+}
+
+document.addEventListener('click', function(e) {
+  if (window.innerWidth <= 768) {
+    const sidebar = document.getElementById('sidebar');
+    const menuBtn = document.querySelector('.menu-btn');
+    if (sidebar && sidebar.classList.contains('mobile-open') && 
+        !sidebar.contains(e.target) && 
+        menuBtn && !menuBtn.contains(e.target)) {
+      sidebar.classList.remove('mobile-open');
+      setTimeout(() => map?.invalidateSize(), 250);
+    }
+  }
+});

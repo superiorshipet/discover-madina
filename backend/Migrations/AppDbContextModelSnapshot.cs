@@ -26,6 +26,9 @@ namespace DiscoverMadina.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -47,9 +50,9 @@ namespace DiscoverMadina.Migrations
                         {
                             Id = 1,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            PasswordHash = "$2a$11$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi",
+                            PasswordHash = "$2a$11$PX3ITuqB95TE.dNFJ8gU2.riyGgJgS7GHk/K1w9GQapHdK0rpJ77G",
                             Role = "superadmin",
-                            Username = "admin01"
+                            Username = "superior"
                         });
                 });
 
@@ -185,6 +188,35 @@ namespace DiscoverMadina.Migrations
                         });
                 });
 
+            modelBuilder.Entity("DiscoverMadina.Models.AttractionPhoto", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AttractionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttractionId");
+
+                    b.ToTable("AttractionPhotos");
+                });
+
             modelBuilder.Entity("DiscoverMadina.Models.ChatLog", b =>
                 {
                     b.Property<int>("Id")
@@ -277,6 +309,17 @@ namespace DiscoverMadina.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("DiscoverMadina.Models.AttractionPhoto", b =>
+                {
+                    b.HasOne("DiscoverMadina.Models.Attraction", "Attraction")
+                        .WithMany("Photos")
+                        .HasForeignKey("AttractionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Attraction");
+                });
+
             modelBuilder.Entity("DiscoverMadina.Models.ChatLog", b =>
                 {
                     b.HasOne("DiscoverMadina.Models.User", "User")
@@ -308,6 +351,8 @@ namespace DiscoverMadina.Migrations
 
             modelBuilder.Entity("DiscoverMadina.Models.Attraction", b =>
                 {
+                    b.Navigation("Photos");
+
                     b.Navigation("Reviews");
                 });
 

@@ -1,4 +1,5 @@
 namespace DiscoverMadina.Models;
+
 public class Attraction
 {
     public int Id { get; set; }
@@ -11,8 +12,10 @@ public class Attraction
     public float RatingAvg { get; set; }
     public string OpeningHours { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public string? ImageUrl { get; set; }
+    public string? ImageUrl { get; set; } // Keep for backward compatibility
     public bool IsFeatured { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    
     public ICollection<Review> Reviews { get; set; } = new List<Review>();
+    public ICollection<AttractionPhoto> Photos { get; set; } = new List<AttractionPhoto>();
 }

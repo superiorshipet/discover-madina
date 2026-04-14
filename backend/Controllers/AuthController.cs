@@ -1,10 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using DiscoverMadina.Data;
 using DiscoverMadina.DTOs;
 using DiscoverMadina.Models;
 using DiscoverMadina.Repositories.Interfaces;
@@ -16,13 +14,13 @@ namespace DiscoverMadina.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IUserRepository _userRepo;
-    private readonly AppDbContext _db;
+    private readonly IAdminRepository _adminRepo;
     private readonly IConfiguration _config;
 
-    public AuthController(IUserRepository userRepo, AppDbContext db, IConfiguration config)
+    public AuthController(IUserRepository userRepo, IAdminRepository adminRepo, IConfiguration config)
     {
         _userRepo = userRepo;
-        _db = db;
+        _adminRepo = adminRepo;
         _config = config;
     }
 
@@ -36,10 +34,12 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = "كلمة المرور 6 أحرف على الأقل" });
 
         var existingEmail = await _userRepo.GetByEmailAsync(dto.Email);
-        if (existingEmail != null) return Conflict(new { message = "البريد الإلكتروني مستخدم بالفعل" });
+        if (existingEmail != null) 
+            return Conflict(new { message = "البريد الإلكتروني مستخدم بالفعل" });
 
         var existingUsername = await _userRepo.GetByUsernameAsync(dto.Username);
-        if (existingUsername != null) return Conflict(new { message = "اسم المستخدم مستخدم بالفعل" });
+        if (existingUsername != null) 
+            return Conflict(new { message = "اسم المستخدم مستخدم بالفعل" });
 
         var user = new User
         {
@@ -48,6 +48,7 @@ public class AuthController : ControllerBase
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             PreferredLanguage = dto.PreferredLanguage
         };
+        
         await _userRepo.CreateAsync(user);
         var token = GenerateToken(user.Id.ToString(), user.Username, "user");
         return Ok(new AuthResponseDto(token, user.Username, "user"));
@@ -59,11 +60,12 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.Username) || string.IsNullOrWhiteSpace(dto.Password))
             return BadRequest(new { message = "أدخل اسم المستخدم وكلمة المرور" });
 
-// Hardcoded admin check - no DB
-        if (dto.Username == "admin01" && dto.Password == "admin123")
+        // Check Admins table first
+        var admin = await _adminRepo.GetByUsernameAsync(dto.Username);
+        if (admin != null && BCrypt.Net.BCrypt.Verify(dto.Password, admin.PasswordHash))
         {
-            var adminToken = GenerateToken("1", "admin01", "superadmin");
-            return Ok(new AuthResponseDto(adminToken, "admin01", "superadmin"));
+            var token = GenerateToken(admin.Id.ToString(), admin.Username, admin.Role);
+            return Ok(new AuthResponseDto(token, admin.Username, admin.Role));
         }
 
         // Check regular user
@@ -74,15 +76,17 @@ public class AuthController : ControllerBase
         if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
             return Unauthorized(new { message = "اسم المستخدم أو كلمة المرور غير صحيحة" });
 
-        var token = GenerateToken(user.Id.ToString(), user.Username, "user");
-        return Ok(new AuthResponseDto(token, user.Username, "user"));
+        var userToken = GenerateToken(user.Id.ToString(), user.Username, "user");
+        return Ok(new AuthResponseDto(userToken, user.Username, "user"));
     }
 
     [HttpGet("me")]
     public IActionResult Me()
     {
         var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
-        if (string.IsNullOrEmpty(token)) return Unauthorized();
+        if (string.IsNullOrEmpty(token)) 
+            return Unauthorized();
+            
         try
         {
             var principal = ValidateToken(token);
@@ -90,7 +94,10 @@ public class AuthController : ControllerBase
             var role = principal.FindFirst(ClaimTypes.Role)?.Value;
             return Ok(new { username, role });
         }
-        catch { return Unauthorized(); }
+        catch 
+        { 
+            return Unauthorized(); 
+        }
     }
 
     private string GenerateToken(string userId, string username, string role)
@@ -119,8 +126,10 @@ public class AuthController : ControllerBase
         var handler = new JwtSecurityTokenHandler();
         return handler.ValidateToken(token, new TokenValidationParameters
         {
-            ValidateIssuer = true, ValidIssuer = _config["Jwt:Issuer"] ?? "DiscoverMadina",
-            ValidateAudience = true, ValidAudience = _config["Jwt:Audience"] ?? "DiscoverMadinaUsers",
+            ValidateIssuer = true, 
+            ValidIssuer = _config["Jwt:Issuer"] ?? "DiscoverMadina",
+            ValidateAudience = true, 
+            ValidAudience = _config["Jwt:Audience"] ?? "DiscoverMadinaUsers",
             ValidateLifetime = true,
             IssuerSigningKey = key
         }, out _);
