@@ -1,0 +1,58 @@
+/* Discover App Custom Theme Variables */
+:root {
+  /* Brand Colors */
+  --discover-primary: #3B82F6;
+  --discover-secondary: #10B981;
+  --discover-accent: #F59E0B;
+  --discover-danger: #EF4444;
+  --discover-neutral: #6B7280;
+  
+  /* Light Mode */
+  --discover-bg: #F8FAFC;
+  --discover-surface: #FFFFFF;
+  --discover-card: #F1F5F9;
+  --discover-border: #E2E8F0;
+  --discover-text-primary: #0F172A;
+  --discover-text-secondary: #64748B;
+  
+  /* Shadows */
+  --discover-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --discover-shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  --discover-shadow-floating: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  
+  /* Font Families */
+  --discover-font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --discover-font-arabic: 'Tajawal', 'IBM Plex Sans Arabic', sans-serif;
+}
+
+.dark {
+  /* Dark Mode */
+  --discover-bg: #0F172A;
+  --discover-surface: #1E293B;
+  --discover-card: #334155;
+  --discover-border: #475569;
+  --discover-text-primary: #F8FAFC;
+  --discover-text-secondary: #94A3B8;
+}
+
+/* RTL Support */
+[dir="rtl"] {
+  font-family: var(--discover-font-arabic);
+}
+
+[dir="ltr"] {
+  font-family: var(--discover-font-primary);
+}
+
+/* Glass morphism effect */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dark .glass-effect {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(71, 85, 105, 0.3);
+}

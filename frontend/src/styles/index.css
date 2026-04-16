@@ -1,0 +1,33 @@
+@import './fonts.css';
+@import './tailwind.css';
+@import './theme.css';
+@import './discover-theme.css';
+/* Ensure map stays behind UI elements */
+.leaflet-container {
+  z-index: 1 !important;
+}
+
+/* UI components should have higher z-index */
+.absolute {
+  z-index: 20;
+}
+
+/* Bottom sheet needs to be above map but below modals */
+.bottom-sheet {
+  z-index: 30;
+}
+
+/* Modals and overlays highest */
+.modal-overlay {
+  z-index: 50;
+}
+/* Prevent text selection while dragging */
+.dragging {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Smooth sheet transitions */
+.bottom-sheet-transition {
+  transition: height 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
