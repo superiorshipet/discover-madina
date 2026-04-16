@@ -9,22 +9,17 @@ namespace DiscoverMadina.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "admin")] // Any admin can access all actions
+[Authorize(Roles = "admin")]
 public class AdminsController : ControllerBase
 {
     private readonly IAdminRepository _adminRepo;
-
-    public AdminsController(IAdminRepository adminRepo)
-    {
-        _adminRepo = adminRepo;
-    }
+    public AdminsController(IAdminRepository adminRepo) => _adminRepo = adminRepo;
 
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
         var admins = await _adminRepo.GetAllAsync();
-        var dtos = admins.Select(a => new AdminDto(a.Id, a.Username, a.Role, a.CreatedAt));
-        return Ok(dtos);
+        return Ok(admins.Select(a => new AdminDto(a.Id, a.Username, a.Role, a.CreatedAt)));
     }
 
     [HttpPost]
@@ -32,24 +27,19 @@ public class AdminsController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(dto.Username) || string.IsNullOrWhiteSpace(dto.Password))
             return BadRequest(new { message = "Username and password required" });
-
         if (dto.Password.Length < 6)
-            return BadRequest(new { message = "Password must be at least 6 characters" });
-
-        var existing = await _adminRepo.GetByUsernameAsync(dto.Username);
-        if (existing != null)
-            return Conflict(new { message = "Username already exists" });
+            return BadRequest(new { message = "Password too short" });
+        if (await _adminRepo.GetByUsernameAsync(dto.Username) != null)
+            return Conflict(new { message = "Username exists" });
 
         var currentAdminId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
         var admin = new Admin
         {
             Username = dto.Username,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-            Role = "admin", // Always "admin" role
+            Role = "admin",
             CreatedBy = currentAdminId != null ? int.Parse(currentAdminId) : null
         };
-
         var created = await _adminRepo.CreateAsync(admin);
         return Ok(new AdminDto(created.Id, created.Username, created.Role, created.CreatedAt));
     }
@@ -57,13 +47,8 @@ public class AdminsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
-        var currentAdminId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (currentAdminId == id.ToString())
-            return BadRequest(new { message = "Cannot delete your own account" });
-
-        var admin = await _adminRepo.GetByIdAsync(id);
-        if (admin == null) return NotFound();
-
+        if (User.FindFirst(ClaimTypes.NameIdentifier)?.Value == id.ToString())
+            return BadRequest(new { message = "Cannot delete yourself" });
         var deleted = await _adminRepo.DeleteAsync(id);
         return deleted ? NoContent() : NotFound();
     }

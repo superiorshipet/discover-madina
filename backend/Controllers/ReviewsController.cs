@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DiscoverMadina.DTOs;
 using DiscoverMadina.Models;
@@ -14,7 +15,7 @@ public class ReviewsController : ControllerBase
     private readonly IUserRepository _userRepo;
 
     public ReviewsController(
-        IReviewRepository reviewRepo, 
+        IReviewRepository reviewRepo,
         IAttractionRepository attractionRepo,
         IUserRepository userRepo)
     {
@@ -27,62 +28,41 @@ public class ReviewsController : ControllerBase
     public async Task<IActionResult> GetByAttraction(int attractionId)
     {
         var reviews = await _reviewRepo.GetByAttractionAsync(attractionId);
-        
-        // Only return approved reviews for public
-        var isAdmin = User.IsInRole("admin") || User.IsInRole("superadmin");
-        var filteredReviews = isAdmin 
-            ? reviews 
-            : reviews.Where(r => r.Status == "approved");
-        
-        return Ok(filteredReviews.Select(r => ToDto(r)));
+        var approvedReviews = reviews.Where(r => r.Status == "approved");
+        return Ok(approvedReviews.Select(ToDto));
     }
 
     [HttpGet("pending")]
+    [Authorize(Roles = "admin")]
     public async Task<IActionResult> GetPending()
     {
         var reviews = await _reviewRepo.GetPendingAsync();
-        return Ok(reviews.Select(r => ToDto(r)));
+        return Ok(reviews.Select(ToDto));
+    }
+
+    [HttpGet("all")]
+    [Authorize(Roles = "admin")]
+    public async Task<IActionResult> GetAll()
+    {
+        var reviews = await _reviewRepo.GetByAttractionAsync(0); // 0 means all
+        return Ok(reviews.Select(ToDto));
     }
 
     [HttpPost]
+    [Authorize]
     public async Task<IActionResult> Create([FromBody] CreateReviewDto dto)
     {
-        // Validate attraction exists
         var attraction = await _attractionRepo.GetByIdAsync(dto.AttractionId);
-        if (attraction == null)
-            return BadRequest(new { message = "المكان غير موجود" });
+        if (attraction == null) return BadRequest(new { message = "Place not found" });
 
-        // Try to find user by username
-        User? user = null;
-        if (!string.IsNullOrEmpty(dto.Username))
-        {
-            user = await _userRepo.GetByUsernameAsync(dto.Username);
-        }
-
-        // If user not found, create a guest user or use a default "anonymous" user
-        if (user == null)
-        {
-            // Option 1: Create a guest user
-            user = await _userRepo.GetByUsernameAsync("guest");
-            
-            // Option 2: If no guest user exists, create one
-            if (user == null)
-            {
-                user = new User
-                {
-                    Username = "guest",
-                    Email = "guest@discover-madina.com",
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("guest123"),
-                    PreferredLanguage = "ar"
-                };
-                user = await _userRepo.CreateAsync(user);
-            }
-        }
+        var username = User.Identity?.Name;
+        var user = await _userRepo.GetByUsernameAsync(username);
+        if (user == null) return Unauthorized();
 
         var review = new Review
         {
             Rating = dto.Rating,
-            Comment = dto.Comment ?? string.Empty,
+            Comment = dto.Comment ?? "",
             AttractionId = dto.AttractionId,
             UserId = user.Id,
             Status = "pending",
@@ -90,48 +70,27 @@ public class ReviewsController : ControllerBase
         };
 
         var created = await _reviewRepo.CreateAsync(review);
-        
-        // Update attraction rating average
         await _attractionRepo.UpdateRatingAsync(dto.AttractionId);
-        
         return Ok(ToDto(created));
     }
 
     [HttpPatch("{id}/status")]
+    [Authorize(Roles = "admin")]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] string status)
     {
         var updated = await _reviewRepo.UpdateStatusAsync(id, status);
         if (updated == null) return NotFound();
-        
         await _attractionRepo.UpdateRatingAsync(updated.AttractionId);
         return Ok(ToDto(updated));
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "admin")]
     public async Task<IActionResult> Delete(int id)
     {
-        var review = await _reviewRepo.GetByIdAsync(id);
-        if (review == null) return NotFound();
-        
         var deleted = await _reviewRepo.DeleteAsync(id);
-        if (deleted)
-        {
-            await _attractionRepo.UpdateRatingAsync(review.AttractionId);
-        }
         return deleted ? NoContent() : NotFound();
     }
 
-    private static ReviewDto ToDto(Review r)
-    {
-        return new ReviewDto(
-            r.Id, 
-            r.Rating, 
-            r.Comment, 
-            r.Status,
-            r.User?.Username ?? "زائر",
-            r.AttractionId, 
-            r.Attraction?.Name ?? "",
-            r.CreatedAt
-        );
-    }
+    private static ReviewDto ToDto(Review r) => new(r.Id, r.Rating, r.Comment, r.Status, r.User?.Username ?? "User", r.AttractionId, r.Attraction?.Name ?? "", r.CreatedAt);
 }

@@ -11,14 +11,38 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DiscoverMadina.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260416145939_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260416164414_FullSystemWithSavedPlaces")]
+    partial class FullSystemWithSavedPlaces
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.0");
+
+            modelBuilder.Entity("DiscoverMadina.Controllers.SavedPlacesController+SavedPlace", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AttractionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("SavedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttractionId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("SavedPlaces");
+                });
 
             modelBuilder.Entity("DiscoverMadina.Models.Admin", b =>
                 {
@@ -47,16 +71,6 @@ namespace DiscoverMadina.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Admins");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            PasswordHash = "$$2a$11$yQ0Z1X2c3V4b5N6m8K9J0eW1R2T3Y4U5I6O7P8A9S0D1F2G3H4J5K6L7",
-                            Role = "admin",
-                            Username = "admin"
-                        });
                 });
 
             modelBuilder.Entity("DiscoverMadina.Models.Attraction", b =>
@@ -149,30 +163,30 @@ namespace DiscoverMadina.Migrations
                             Id = 3,
                             Category = "cultural",
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "يعرض تاريخ المدينة المنورة عبر العصور.",
-                            Icon = "🏛️",
+                            Description = "موقع جبل أحد التاريخي.",
+                            Icon = "⛰️",
                             IsFeatured = true,
-                            Latitude = 24.4710m,
-                            Longitude = 39.6125m,
-                            Name = "متحف المدينة المنورة",
-                            NameEn = "Madinah Museum",
-                            OpeningHours = "09:00 - 21:00",
-                            RatingAvg = 4.6f
+                            Latitude = 24.5267m,
+                            Longitude = 39.6411m,
+                            Name = "جبل أحد",
+                            NameEn = "Mount Uhud",
+                            OpeningHours = "دائماً مفتوح",
+                            RatingAvg = 4.8f
                         },
                         new
                         {
                             Id = 4,
-                            Category = "entertainment",
+                            Category = "religious",
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "أكبر حديقة عامة في المدينة المنورة.",
-                            Icon = "🌳",
+                            Description = "هنا تلقى النبي ﷺ الوحي بتغيير القبلة.",
+                            Icon = "🕌",
                             IsFeatured = true,
-                            Latitude = 24.4800m,
-                            Longitude = 39.5960m,
-                            Name = "حديقة الملك فهد",
-                            NameEn = "King Fahd Park",
-                            OpeningHours = "07:00 - 23:00",
-                            RatingAvg = 4.4f
+                            Latitude = 24.4847m,
+                            Longitude = 39.5789m,
+                            Name = "مسجد القبلتين",
+                            NameEn = "Masjid Al-Qiblatayn",
+                            OpeningHours = "24/7",
+                            RatingAvg = 4.7f
                         },
                         new
                         {
@@ -185,9 +199,54 @@ namespace DiscoverMadina.Migrations
                             Latitude = 24.4680m,
                             Longitude = 39.6090m,
                             Name = "مطعم البيك",
-                            NameEn = "Al-Baik Restaurant",
-                            OpeningHours = "10:00 - 02:00",
+                            NameEn = "Al-Baik",
+                            OpeningHours = "11:00 - 02:00",
                             RatingAvg = 4.7f
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Category = "cultural",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "متحف يعرض تاريخ وتراث المدينة.",
+                            Icon = "🏛️",
+                            IsFeatured = false,
+                            Latitude = 24.4710m,
+                            Longitude = 39.6125m,
+                            Name = "متحف دار المدينة",
+                            NameEn = "Dar Al Madinah Museum",
+                            OpeningHours = "09:00 - 21:00",
+                            RatingAvg = 4.6f
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Category = "religious",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "مجمع مساجد تاريخية.",
+                            Icon = "🕌",
+                            IsFeatured = false,
+                            Latitude = 24.5019m,
+                            Longitude = 39.6078m,
+                            Name = "المساجد السبعة",
+                            NameEn = "The Seven Mosques",
+                            OpeningHours = "24/7",
+                            RatingAvg = 4.5f
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Category = "entertainment",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "أكبر حديقة عامة في المدينة.",
+                            Icon = "🌳",
+                            IsFeatured = false,
+                            Latitude = 24.4800m,
+                            Longitude = 39.5960m,
+                            Name = "حديقة الملك فهد",
+                            NameEn = "King Fahd Park",
+                            OpeningHours = "07:00 - 23:00",
+                            RatingAvg = 4.4f
                         });
                 });
 
@@ -283,6 +342,25 @@ namespace DiscoverMadina.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("DiscoverMadina.Controllers.SavedPlacesController+SavedPlace", b =>
+                {
+                    b.HasOne("DiscoverMadina.Models.Attraction", "Attraction")
+                        .WithMany()
+                        .HasForeignKey("AttractionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DiscoverMadina.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Attraction");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("DiscoverMadina.Models.AttractionPhoto", b =>
