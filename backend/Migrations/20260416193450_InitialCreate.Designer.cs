@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DiscoverMadina.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260416164414_FullSystemWithSavedPlaces")]
-    partial class FullSystemWithSavedPlaces
+    [Migration("20260416193450_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -58,6 +58,9 @@ namespace DiscoverMadina.Migrations
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProfileImageUrl")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Role")
@@ -333,6 +336,9 @@ namespace DiscoverMadina.Migrations
 
                     b.Property<string>("PreferredLanguage")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProfileImageUrl")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Username")

@@ -57,6 +57,9 @@ namespace DiscoverMadina.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ProfileImageUrl")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -330,6 +333,9 @@ namespace DiscoverMadina.Migrations
 
                     b.Property<string>("PreferredLanguage")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProfileImageUrl")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Username")

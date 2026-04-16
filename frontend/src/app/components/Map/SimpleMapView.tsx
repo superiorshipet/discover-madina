@@ -12,25 +12,36 @@ interface SimpleMapViewProps {
   center?: [number, number];
   zoom?: number;
   routeTo?: Place | null;
+  locateTrigger?: number;
 }
 
 export const SimpleMapView: React.FC<SimpleMapViewProps> = ({
-  places, selectedPlace, onPlaceSelect, center = [24.4672, 39.6111], zoom = 13, routeTo = null
+  places, selectedPlace, onPlaceSelect, center = [24.4672, 39.6111], zoom = 13, routeTo = null, locateTrigger = 0
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
+  const userMarkerRef = useRef<L.Marker | null>(null);
   const routingControlRef = useRef<L.Routing.Control | null>(null);
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
     mapInstanceRef.current = L.map(mapRef.current, { zoomControl: false, attributionControl: false, keyboard: false }).setView(center, zoom);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', subdomains: 'abcd', maxZoom: 20 }).addTo(mapInstanceRef.current);
     L.control.zoom({ position: 'bottomright' }).addTo(mapInstanceRef.current);
-    mapInstanceRef.current.locate().on('locationfound', (e) => setUserLocation([e.latlng.lat, e.latlng.lng]));
     return () => { mapInstanceRef.current?.remove(); mapInstanceRef.current = null; };
   }, []);
+
+  useEffect(() => {
+    if (locateTrigger > 0 && mapInstanceRef.current) {
+      mapInstanceRef.current.locate().on('locationfound', (e) => {
+        const { lat, lng } = e.latlng;
+        if (userMarkerRef.current) userMarkerRef.current.remove();
+        userMarkerRef.current = L.marker([lat, lng], { icon: L.divIcon({ html: '<div style="background: #3B82F6; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 4px rgba(59,130,246,0.3);"></div>', className: 'user-location-marker', iconSize: [20, 20], iconAnchor: [10, 10] }) }).bindPopup('📍 You are here').addTo(mapInstanceRef.current!);
+        mapInstanceRef.current?.setView([lat, lng], 15);
+      });
+    }
+  }, [locateTrigger]);
 
   useEffect(() => {
     if (selectedPlace && mapInstanceRef.current) {
@@ -55,16 +66,12 @@ export const SimpleMapView: React.FC<SimpleMapViewProps> = ({
   }, [places, onPlaceSelect]);
 
   useEffect(() => {
-    if (!userLocation || !mapInstanceRef.current) return;
-    L.marker(userLocation, { icon: L.divIcon({ html: '<div style="background: #3B82F6; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 4px rgba(59,130,246,0.3);"></div>', className: 'user-location-marker', iconSize: [20, 20], iconAnchor: [10, 10] }) }).bindPopup('📍 You are here').addTo(mapInstanceRef.current);
-  }, [userLocation]);
-
-  useEffect(() => {
-    if (!mapInstanceRef.current || !routeTo || !userLocation) return;
+    if (!mapInstanceRef.current || !routeTo || !userMarkerRef.current) return;
+    const userPos = userMarkerRef.current.getLatLng();
     if (routingControlRef.current) mapInstanceRef.current.removeControl(routingControlRef.current);
     routingControlRef.current = L.Routing.control({
-      waypoints: [L.latLng(userLocation[0], userLocation[1]), L.latLng(routeTo.lat, routeTo.lng)],
-      routeWhileDragging: true,
+      waypoints: [userPos, L.latLng(routeTo.lat, routeTo.lng)],
+      routeWhileDragging: false,
       lineOptions: { styles: [{ color: '#3B82F6', weight: 5 }] },
       createMarker: () => null,
       addWaypoints: false,
@@ -73,7 +80,7 @@ export const SimpleMapView: React.FC<SimpleMapViewProps> = ({
       showAlternatives: false
     }).addTo(mapInstanceRef.current);
     return () => { if (routingControlRef.current) mapInstanceRef.current?.removeControl(routingControlRef.current); };
-  }, [routeTo, userLocation]);
+  }, [routeTo]);
 
   return <div ref={mapRef} style={{ height: '100%', width: '100%' }} />;
 };

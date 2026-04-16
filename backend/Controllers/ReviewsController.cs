@@ -44,7 +44,7 @@ public class ReviewsController : ControllerBase
     [Authorize(Roles = "admin")]
     public async Task<IActionResult> GetAll()
     {
-        var reviews = await _reviewRepo.GetByAttractionAsync(0); // 0 means all
+        var reviews = await _reviewRepo.GetByAttractionAsync(0);
         return Ok(reviews.Select(ToDto));
     }
 
@@ -52,26 +52,35 @@ public class ReviewsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> Create([FromBody] CreateReviewDto dto)
     {
-        var attraction = await _attractionRepo.GetByIdAsync(dto.AttractionId);
-        if (attraction == null) return BadRequest(new { message = "Place not found" });
-
-        var username = User.Identity?.Name;
-        var user = await _userRepo.GetByUsernameAsync(username);
-        if (user == null) return Unauthorized();
-
-        var review = new Review
+        try
         {
-            Rating = dto.Rating,
-            Comment = dto.Comment ?? "",
-            AttractionId = dto.AttractionId,
-            UserId = user.Id,
-            Status = "pending",
-            CreatedAt = DateTime.UtcNow
-        };
+            var attraction = await _attractionRepo.GetByIdAsync(dto.AttractionId);
+            if (attraction == null) return BadRequest(new { message = "Place not found" });
 
-        var created = await _reviewRepo.CreateAsync(review);
-        await _attractionRepo.UpdateRatingAsync(dto.AttractionId);
-        return Ok(ToDto(created));
+            var username = User.Identity?.Name;
+            if (string.IsNullOrEmpty(username)) return Unauthorized(new { message = "User not authenticated" });
+
+            var user = await _userRepo.GetByUsernameAsync(username);
+            if (user == null) return Unauthorized(new { message = "User not found" });
+
+            var review = new Review
+            {
+                Rating = dto.Rating,
+                Comment = dto.Comment ?? "",
+                AttractionId = dto.AttractionId,
+                UserId = user.Id,
+                Status = "pending",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var created = await _reviewRepo.CreateAsync(review);
+            await _attractionRepo.UpdateRatingAsync(dto.AttractionId);
+            return Ok(ToDto(created));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to submit review", error = ex.Message });
+        }
     }
 
     [HttpPatch("{id}/status")]

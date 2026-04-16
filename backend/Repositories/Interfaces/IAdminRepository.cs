@@ -8,6 +8,6 @@ public interface IAdminRepository
     Task<Admin?> GetByUsernameAsync(string username);
     Task<List<Admin>> GetAllAsync();
     Task<Admin> CreateAsync(Admin admin);
+    Task<Admin> UpdateAsync(Admin admin);
     Task<bool> DeleteAsync(int id);
-    Task<bool> UpdatePasswordAsync(int id, string passwordHash);
 }

@@ -14,6 +14,5 @@ public record ReviewDto(
 public record CreateReviewDto(
     int Rating, 
     string Comment, 
-    int AttractionId, 
-    string? Username  // Make it nullable
+    int AttractionId
 );

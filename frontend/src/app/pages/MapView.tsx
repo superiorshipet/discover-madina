@@ -22,6 +22,7 @@ export const MapView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [sheetHeight, setSheetHeight] = useState(120);
   const [isDragging, setIsDragging] = useState(false);
+  const [locateTrigger, setLocateTrigger] = useState(0);
   const dragStartY = useRef(0);
   const dragStartHeight = useRef(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -51,38 +52,43 @@ export const MapView: React.FC = () => {
 
   const handleSavePlace = async (place: Place) => { if (!isAuthenticated) { navigate('/auth'); return; } try { await fetch(`${API_BASE}/savedplaces/${place.id}`, { method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }); alert('✅ Saved!'); } catch { alert('❌ Failed'); } };
   const handleGetDirections = (place: Place) => { setRouteTo(place); setSelectedPlace(null); };
+  const handleLocateUser = () => { setLocateTrigger(prev => prev + 1); };
 
   const handleDragStart = (e: React.TouchEvent | React.MouseEvent) => { setIsDragging(true); dragStartY.current = 'touches' in e ? e.touches[0].clientY : e.clientY; dragStartHeight.current = sheetHeight; };
   const handleDragMove = (e: TouchEvent | MouseEvent) => { if (!isDragging) return; const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY; let newHeight = dragStartHeight.current + (dragStartY.current - clientY); newHeight = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, newHeight)); setSheetHeight(newHeight); };
   useEffect(() => { if (isDragging) { window.addEventListener('mousemove', handleDragMove); window.addEventListener('mouseup', () => setIsDragging(false)); window.addEventListener('touchmove', handleDragMove); window.addEventListener('touchend', () => setIsDragging(false)); } return () => { window.removeEventListener('mousemove', handleDragMove); window.removeEventListener('touchmove', handleDragMove); }; }, [isDragging]);
 
-  if (loading) return <div className="h-screen w-full flex items-center justify-center"><div className="text-4xl">🕌</div></div>;
+  if (loading) return <div className="h-screen w-full flex items-center justify-center bg-[var(--discover-bg)]"><div className="text-4xl">🕌</div></div>;
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-[var(--discover-bg)]" dir={language === 'ar' ? 'rtl' : 'ltr'}>
-      <SimpleMapView places={filteredPlaces} selectedPlace={selectedPlace} onPlaceSelect={setSelectedPlace} center={[24.4672, 39.6111]} zoom={13} routeTo={routeTo} />
+      <SimpleMapView places={filteredPlaces} selectedPlace={selectedPlace} onPlaceSelect={setSelectedPlace} center={[24.4672, 39.6111]} zoom={13} routeTo={routeTo} locateTrigger={locateTrigger} />
+      
       <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[90%] max-w-[500px] z-20">
         <div className="glass-effect rounded-full shadow-lg px-4 py-3 flex items-center gap-3" onClick={() => searchInputRef.current?.focus()}>
-          <Search className="w-5 h-5 text-[var(--discover-text-secondary)]" />
-          <input ref={searchInputRef} type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="flex-1 bg-transparent border-none outline-none" />
-          <button onClick={e => { e.stopPropagation(); setShowFilters(!showFilters); }} className="p-2"><Filter className="w-5 h-5" /></button>
+          <Search className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+          <input ref={searchInputRef} type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder={t('searchPlaces') || "Search places..."} className="flex-1 bg-transparent border-none outline-none text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400" />
+          <button onClick={e => { e.stopPropagation(); setShowFilters(!showFilters); }} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full"><Filter className="w-5 h-5 text-gray-600 dark:text-gray-300" /></button>
         </div>
-        {showFilters && <div className="absolute top-full left-0 right-0 mt-2 p-4 bg-white rounded-2xl shadow-xl z-30"><div className="flex justify-between mb-3"><h3>Categories</h3><button onClick={() => setShowFilters(false)}><X className="w-5 h-5" /></button></div><div className="flex flex-wrap gap-2">{categories.map(cat => <button key={cat} onClick={() => { setSelectedCategory(cat); setShowFilters(false); }} className={`px-4 py-2 rounded-full ${selectedCategory === cat ? 'bg-[var(--discover-primary)] text-white' : 'bg-gray-100'}`}>{cat}</button>)}</div></div>}
+        {showFilters && <div className="absolute top-full left-0 right-0 mt-2 p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-xl z-30"><div className="flex justify-between mb-3"><h3 className="font-semibold text-gray-900 dark:text-white">Categories</h3><button onClick={() => setShowFilters(false)}><X className="w-5 h-5 text-gray-600 dark:text-gray-300" /></button></div><div className="flex flex-wrap gap-2">{categories.map(cat => <button key={cat} onClick={() => { setSelectedCategory(cat); setShowFilters(false); }} className={`px-4 py-2 rounded-full ${selectedCategory === cat ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>{cat}</button>)}</div></div>}
       </div>
+
       <div className="absolute bottom-32 right-4 z-20 flex flex-col gap-3">
-        <button className="w-12 h-12 rounded-full bg-[var(--discover-primary)] text-white shadow-lg"><Navigation className="w-5 h-5" /></button>
-        <button onClick={toggleTheme} className="w-12 h-12 rounded-full bg-white shadow-lg">{theme === 'light' ? <Moon /> : <Sun />}</button>
-        <button onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')} className="w-12 h-12 rounded-full bg-white shadow-lg relative"><Globe /><span className="absolute -bottom-1 -right-1 text-xs">{language === 'ar' ? 'AR' : 'EN'}</span></button>
-        {user?.role === 'admin' && <button onClick={() => navigate('/admin')} className="w-12 h-12 rounded-full bg-white shadow-lg"><Home className="w-5 h-5" /></button>}
+        <button onClick={handleLocateUser} className="w-12 h-12 rounded-full bg-blue-500 text-white shadow-lg hover:scale-105 transition-transform flex items-center justify-center"><Navigation className="w-5 h-5" /></button>
+        <button onClick={toggleTheme} className="w-12 h-12 rounded-full bg-white dark:bg-gray-800 shadow-lg hover:scale-105 transition-transform flex items-center justify-center border border-gray-200 dark:border-gray-700">{theme === 'light' ? <Moon className="w-5 h-5 text-gray-700" /> : <Sun className="w-5 h-5 text-yellow-500" />}</button>
+        <button onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')} className="w-12 h-12 rounded-full bg-white dark:bg-gray-800 shadow-lg hover:scale-105 transition-transform flex items-center justify-center relative border border-gray-200 dark:border-gray-700"><Globe className="w-5 h-5 text-gray-700 dark:text-gray-300" /><span className="absolute -bottom-1 -right-1 text-xs font-bold text-blue-500 bg-white dark:bg-gray-800 px-1 rounded-full">{language === 'ar' ? 'AR' : 'EN'}</span></button>
+        {user?.role === 'admin' && <button onClick={() => navigate('/admin')} className="w-12 h-12 rounded-full bg-white dark:bg-gray-800 shadow-lg hover:scale-105 transition-transform flex items-center justify-center border border-gray-200 dark:border-gray-700"><Home className="w-5 h-5 text-gray-700 dark:text-gray-300" /></button>}
         <UserMenu />
       </div>
-      <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-30 overflow-hidden" style={{ height: sheetHeight }}>
-        <div className="flex justify-center pt-3 pb-2 cursor-grab" onMouseDown={handleDragStart} onTouchStart={handleDragStart}><div className="w-12 h-1.5 bg-gray-300 rounded-full" /></div>
-        <div className="flex justify-between px-6 py-2"><h2>Nearby Places</h2><span className="text-xs">↑ Drag ↑</span></div>
+
+      <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl shadow-2xl z-30 overflow-hidden" style={{ height: sheetHeight }}>
+        <div className="flex justify-center pt-3 pb-2 cursor-grab" onMouseDown={handleDragStart} onTouchStart={handleDragStart}><div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full" /></div>
+        <div className="flex justify-between px-6 py-2"><h2 className="font-semibold text-gray-900 dark:text-white">{t('nearbyPlaces') || "Nearby Places"}</h2><span className="text-xs text-gray-500 dark:text-gray-400">↑ Drag ↑</span></div>
         <div className="px-6 pb-6 overflow-y-auto" style={{ height: sheetHeight - 60 }}>{filteredPlaces.map(p => <PlaceCard key={p.id} place={p} layout="horizontal" onClick={() => setSelectedPlace(p)} />)}</div>
       </div>
+
       {selectedPlace && <PlaceDetailModal place={selectedPlace} onClose={() => setSelectedPlace(null)} onSave={handleSavePlace} onDirections={handleGetDirections} />}
-      {routeTo && <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 bg-white rounded-full shadow-lg px-4 py-2 flex items-center gap-2"><span>🗺️ Route to {routeTo.name}</span><button onClick={() => setRouteTo(null)} className="ml-2 text-red-500">✕</button></div>}
+      {routeTo && <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 bg-white dark:bg-gray-800 rounded-full shadow-lg px-4 py-2 flex items-center gap-2 border border-gray-200 dark:border-gray-700"><span className="text-gray-900 dark:text-white">🗺️ Route to {routeTo.name}</span><button onClick={() => setRouteTo(null)} className="ml-2 text-red-500 hover:text-red-700">✕</button></div>}
     </div>
   );
 };

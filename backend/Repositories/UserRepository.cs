@@ -1,33 +1,40 @@
-using Microsoft.EntityFrameworkCore;
 using DiscoverMadina.Data;
 using DiscoverMadina.Models;
 using DiscoverMadina.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace DiscoverMadina.Repositories;
 
 public class UserRepository : IUserRepository
 {
-    private readonly AppDbContext _db;
-    public UserRepository(AppDbContext db) => _db = db;
+    private readonly AppDbContext _context;
+    public UserRepository(AppDbContext context) => _context = context;
 
-    public async Task<User?> GetByIdAsync(int id) => await _db.Users.FindAsync(id);
-    public async Task<User?> GetByEmailAsync(string email) => await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
-    public async Task<User?> GetByUsernameAsync(string username) => await _db.Users.FirstOrDefaultAsync(u => u.Username == username);
-    public async Task<IEnumerable<User>> GetAllAsync() => await _db.Users.OrderByDescending(u => u.CreatedAt).ToListAsync();
-
+    public async Task<List<User>> GetAllAsync() => await _context.Users.ToListAsync();
+    public async Task<User?> GetByIdAsync(int id) => await _context.Users.FindAsync(id);
+    public async Task<User?> GetByEmailAsync(string email) => await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+    public async Task<User?> GetByUsernameAsync(string username) => await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+    
     public async Task<User> CreateAsync(User user)
     {
-        _db.Users.Add(user);
-        await _db.SaveChangesAsync();
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
+        return user;
+    }
+
+    public async Task<User> UpdateAsync(User user)
+    {
+        _context.Users.Update(user);
+        await _context.SaveChangesAsync();
         return user;
     }
 
     public async Task<bool> DeleteAsync(int id)
     {
-        var u = await _db.Users.FindAsync(id);
-        if (u == null) return false;
-        _db.Users.Remove(u);
-        await _db.SaveChangesAsync();
+        var user = await _context.Users.FindAsync(id);
+        if (user == null) return false;
+        _context.Users.Remove(user);
+        await _context.SaveChangesAsync();
         return true;
     }
 }

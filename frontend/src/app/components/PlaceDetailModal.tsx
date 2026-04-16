@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Star, Navigation, Bookmark, Share2, Clock, Phone, Globe as WebIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Star, Navigation, Bookmark, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import type { Place } from '../data/mockData';
 import { API_BASE } from '../config/api';
@@ -12,7 +12,7 @@ interface PlaceDetailModalProps {
 }
 
 export const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClose, onSave, onDirections }) => {
-  const { language, t, isAuthenticated, user } = useApp();
+  const { language, isAuthenticated } = useApp();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -20,6 +20,7 @@ export const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClo
   const [comment, setComment] = useState('');
   const [reviews, setReviews] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   const placeName = language === 'ar' ? place.nameAr : place.name;
   const placeDescription = language === 'ar' ? place.descriptionAr : place.description;
@@ -39,15 +40,26 @@ export const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClo
 
   const handleSubmitReview = async () => {
     if (!isAuthenticated) { alert('Please login first'); return; }
-    if (rating === 0) { alert('Please select a rating'); return; }
+    if (rating === 0) { setError('Please select a rating'); return; }
+    
     setSubmitting(true);
+    setError('');
+    
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${API_BASE}/reviews`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ rating, comment, attractionId: place.id })
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ 
+          rating, 
+          comment: comment || '', 
+          attractionId: place.id 
+        })
       });
+      
       if (res.ok) {
         alert('✅ Review submitted for approval!');
         setShowReviewModal(false);
@@ -55,10 +67,14 @@ export const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClo
         setComment('');
         fetchReviews();
       } else {
-        alert('❌ Failed to submit review');
+        const err = await res.json();
+        setError(err.message || 'Failed to submit review');
       }
-    } catch { alert('❌ Error'); }
-    setSubmitting(false);
+    } catch (err) {
+      setError('Network error. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -81,8 +97,6 @@ export const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClo
                 </>
               )}
             </>
-          ) : place.thumbnail ? (
-            <img src={place.thumbnail} alt={placeName} className="w-full h-full object-cover" />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-6xl">{place.category === 'religious' ? '🕌' : '📍'}</div>
           )}
@@ -102,7 +116,7 @@ export const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClo
 
           <div><h3 className="font-semibold mb-2">📝 Description</h3><p className="text-sm text-[var(--discover-text-secondary)]">{showFullDescription ? placeDescription : placeDescription.slice(0, 150) + '...'}<button onClick={() => setShowFullDescription(!showFullDescription)} className="text-[var(--discover-primary)] ml-2">[{showFullDescription ? 'Less' : 'More'}]</button></p></div>
 
-          <div><h3 className="font-semibold mb-3">⭐ Reviews</h3>{reviews.length === 0 ? <p className="text-sm text-[var(--discover-text-secondary)]">No reviews yet.</p> : reviews.slice(0, 3).map((r) => <div key={r.id} className="border-b border-[var(--discover-border)] py-3"><div className="flex items-center gap-2"><span className="font-medium">{r.username}</span><div className="flex">{Array(r.rating).fill(0).map((_, i) => <Star key={i} className="w-3 h-3 fill-[var(--discover-accent)] text-[var(--discover-accent)]" />)}</div></div><p className="text-sm text-[var(--discover-text-secondary)]">{r.comment}</p></div>)}</div>
+          <div><h3 className="font-semibold mb-3">⭐ Reviews ({reviews.length})</h3>{reviews.length === 0 ? <p className="text-sm text-[var(--discover-text-secondary)]">No reviews yet. Be the first!</p> : reviews.map((r) => <div key={r.id} className="border-b border-[var(--discover-border)] py-3"><div className="flex items-center gap-2"><span className="font-medium">{r.username}</span><div className="flex">{Array(r.rating).fill(0).map((_, i) => <Star key={i} className="w-3 h-3 fill-[var(--discover-accent)] text-[var(--discover-accent)]" />)}</div></div><p className="text-sm text-[var(--discover-text-secondary)]">{r.comment}</p></div>)}</div>
         </div>
       </div>
 
@@ -110,9 +124,10 @@ export const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ place, onClo
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowReviewModal(false)}>
           <div className="bg-white dark:bg-[var(--discover-surface)] rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-bold mb-4">Write a Review</h3>
+            {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">{error}</div>}
             <div className="flex gap-2 mb-4 text-3xl">{[1, 2, 3, 4, 5].map((i) => <button key={i} onClick={() => setRating(i)} className={`${rating >= i ? 'text-[var(--discover-accent)]' : 'text-gray-300'}`}>★</button>)}</div>
-            <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Share your experience..." className="w-full p-3 border rounded-xl mb-4" rows={3} />
-            <div className="flex gap-2"><button onClick={handleSubmitReview} disabled={submitting} className="flex-1 py-2 bg-[var(--discover-primary)] text-white rounded-xl">{submitting ? 'Submitting...' : 'Submit'}</button><button onClick={() => setShowReviewModal(false)} className="flex-1 py-2 border rounded-xl">Cancel</button></div>
+            <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Share your experience... (optional)" className="w-full p-3 border rounded-xl mb-4" rows={3} />
+            <div className="flex gap-2"><button onClick={handleSubmitReview} disabled={submitting} className="flex-1 py-2 bg-[var(--discover-primary)] text-white rounded-xl disabled:opacity-50">{submitting ? 'Submitting...' : 'Submit Review'}</button><button onClick={() => { setShowReviewModal(false); setError(''); }} className="flex-1 py-2 border rounded-xl">Cancel</button></div>
           </div>
         </div>
       )}
