@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "V1BeVkqCkvM=",
+  "dgSpecHash": "ItrzeTlLDXs=",
   "success": true,
   "projectFilePath": "/home/superior/madina/discover-madina/backend/DiscoverMadina.csproj",
   "expectedPackageFiles": [
@@ -62,30 +62,5 @@
     "/home/superior/.nuget/packages/system.security.permissions/9.0.0/system.security.permissions.9.0.0.nupkg.sha512",
     "/home/superior/.nuget/packages/system.windows.extensions/9.0.0/system.windows.extensions.9.0.0.nupkg.sha512"
   ],
-  "logs": [
-    {
-      "code": "NU1603",
-      "level": "Warning",
-      "message": "DiscoverMadina depends on Microsoft.IdentityModel.Tokens (>= 8.3.3) but Microsoft.IdentityModel.Tokens 8.3.3 was not found. Microsoft.IdentityModel.Tokens 8.4.0 was resolved instead.",
-      "projectPath": "/home/superior/madina/discover-madina/backend/DiscoverMadina.csproj",
-      "warningLevel": 1,
-      "filePath": "/home/superior/madina/discover-madina/backend/DiscoverMadina.csproj",
-      "libraryId": "Microsoft.IdentityModel.Tokens",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1603",
-      "level": "Warning",
-      "message": "DiscoverMadina depends on System.IdentityModel.Tokens.Jwt (>= 8.3.3) but System.IdentityModel.Tokens.Jwt 8.3.3 was not found. System.IdentityModel.Tokens.Jwt 8.4.0 was resolved instead.",
-      "projectPath": "/home/superior/madina/discover-madina/backend/DiscoverMadina.csproj",
-      "warningLevel": 1,
-      "filePath": "/home/superior/madina/discover-madina/backend/DiscoverMadina.csproj",
-      "libraryId": "System.IdentityModel.Tokens.Jwt",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    }
-  ]
+  "logs": []
 }

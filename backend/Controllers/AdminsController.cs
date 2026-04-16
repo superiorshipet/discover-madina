@@ -9,7 +9,7 @@ namespace DiscoverMadina.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "admin")] // Only admin can access
+[Authorize(Roles = "admin")] // Any admin can access all actions
 public class AdminsController : ControllerBase
 {
     private readonly IAdminRepository _adminRepo;
@@ -46,7 +46,7 @@ public class AdminsController : ControllerBase
         {
             Username = dto.Username,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-            Role = "admin", // Always admin now
+            Role = "admin", // Always "admin" role
             CreatedBy = currentAdminId != null ? int.Parse(currentAdminId) : null
         };
 

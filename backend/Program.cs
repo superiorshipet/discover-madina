@@ -5,6 +5,7 @@ using System.Text;
 using DiscoverMadina.Data;
 using DiscoverMadina.Repositories;
 using DiscoverMadina.Repositories.Interfaces;
+using DiscoverMadina.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,10 +52,31 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
 
+// Migrate and Seed Database
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    
+    // Apply migrations
     db.Database.Migrate();
+    
+    // Seed default admin if no admins exist
+    if (!db.Admins.Any())
+    {
+        db.Admins.Add(new Admin
+        {
+            Username = "admin",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),
+            Role = "admin",
+            CreatedAt = DateTime.UtcNow
+        });
+        db.SaveChanges();
+        Console.WriteLine("✅ Default admin created: admin / admin123");
+    }
+    else
+    {
+        Console.WriteLine($"✅ {db.Admins.Count()} admin(s) already exist");
+    }
 }
 
 app.UseSwagger();

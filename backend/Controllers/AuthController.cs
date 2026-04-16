@@ -28,18 +28,18 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Register([FromBody] RegisterDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Username) || string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
-            return BadRequest(new { message = dto.PreferredLanguage == "ar" ? "جميع الحقول مطلوبة" : "All fields are required" });
+            return BadRequest(new { message = "All fields are required" });
 
         if (dto.Password.Length < 6)
-            return BadRequest(new { message = dto.PreferredLanguage == "ar" ? "كلمة المرور 6 أحرف على الأقل" : "Password must be at least 6 characters" });
+            return BadRequest(new { message = "Password must be at least 6 characters" });
 
         var existingEmail = await _userRepo.GetByEmailAsync(dto.Email);
         if (existingEmail != null)
-            return Conflict(new { message = dto.PreferredLanguage == "ar" ? "البريد الإلكتروني مستخدم بالفعل" : "Email already in use" });
+            return Conflict(new { message = "Email already in use" });
 
         var existingUsername = await _userRepo.GetByUsernameAsync(dto.Username);
         if (existingUsername != null)
-            return Conflict(new { message = dto.PreferredLanguage == "ar" ? "اسم المستخدم مستخدم بالفعل" : "Username already taken" });
+            return Conflict(new { message = "Username already taken" });
 
         var user = new User
         {
@@ -60,12 +60,29 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.Username) || string.IsNullOrWhiteSpace(dto.Password))
             return BadRequest(new { message = "Username and password required" });
 
-        // Check Admin first
-        var admin = await _adminRepo.GetByUsernameAsync(dto.Username);
-        if (admin != null && BCrypt.Net.BCrypt.Verify(dto.Password, admin.PasswordHash))
+        // Hardcoded admin for quick testing (remove after database is fixed)
+        if (dto.Username == "admin" && dto.Password == "admin123")
         {
-            var token = GenerateToken(admin.Id.ToString(), admin.Username, admin.Role);
-            return Ok(new AuthResponseDto(token, admin.Username, admin.Role));
+            var token = GenerateToken("1", "admin", "admin");
+            return Ok(new AuthResponseDto(token, "admin", "admin"));
+        }
+
+        // Check Admin in database
+        var admin = await _adminRepo.GetByUsernameAsync(dto.Username);
+        if (admin != null)
+        {
+            try
+            {
+                if (BCrypt.Net.BCrypt.Verify(dto.Password, admin.PasswordHash))
+                {
+                    var token = GenerateToken(admin.Id.ToString(), admin.Username, admin.Role);
+                    return Ok(new AuthResponseDto(token, admin.Username, admin.Role));
+                }
+            }
+            catch
+            {
+                return StatusCode(500, new { message = "Invalid stored password hash" });
+            }
         }
 
         // Check regular user
