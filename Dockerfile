@@ -1,28 +1,43 @@
-# Stage 1: Build
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
-WORKDIR /src
+# Multi-stage build for both frontend and backend
 
-# Copy only the project file first to cache the restore layer
-COPY ["backend/DiscoverMadina.csproj", "backend/"]
-RUN dotnet restore "backend/DiscoverMadina.csproj"
+# Stage 1: Build Frontend
+FROM node:20-alpine AS frontend-build
+WORKDIR /frontend
+COPY frontend/package*.json ./
+RUN npm install --legacy-peer-deps
+COPY frontend/ ./
+RUN npm run build
 
-# Copy everything else
-COPY . .
+# Stage 2: Build Backend
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend-build
+WORKDIR /backend
+COPY backend/*.csproj ./
+RUN dotnet restore
+COPY backend/ ./
+RUN dotnet publish -c Release -o out
 
-# Publish the app
-WORKDIR "/src/backend"
-RUN dotnet publish "DiscoverMadina.csproj" -c Release -o /app/publish
-
-# Stage 2: Runtime
-# ... (rest of your build steps)
-
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+# Stage 3: Final Runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
-COPY --from=build /app/publish .
-COPY frontend/ ./wwwroot/
 
-# Railway looks for PORT, so we tell .NET to listen there
-ENV ASPNETCORE_URLS=http://+:8080
+# Install SQLite
+RUN apt-get update && apt-get install -y sqlite3 libsqlite3-dev && rm -rf /var/lib/apt/lists/*
+
+# Copy backend
+COPY --from=backend-build /backend/out ./
+
+# Copy frontend build to wwwroot
+COPY --from=frontend-build /frontend/dist ./wwwroot/
+
+# Create uploads directory
+RUN mkdir -p wwwroot/uploads
+
+# Set permissions
+RUN chmod -R 755 wwwroot
+
 EXPOSE 8080
+
+ENV ASPNETCORE_URLS=http://0.0.0.0:${PORT:-8080}
+ENV ASPNETCORE_ENVIRONMENT=Production
 
 ENTRYPOINT ["dotnet", "DiscoverMadina.dll"]

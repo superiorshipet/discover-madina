@@ -1,0 +1,12 @@
+**/.git
+**/.vs
+**/.vscode
+**/bin
+**/obj
+**/Migrations
+*.db
+*.db-shm
+*.db-wal
+**/node_modules
+**/wwwroot/uploads/*
+!wwwroot/uploads/.gitkeep
