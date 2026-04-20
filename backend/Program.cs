@@ -15,10 +15,7 @@ var usePostgres = !string.IsNullOrEmpty(databaseUrl);
 
 if (usePostgres)
 {
-    Console.WriteLine($"📦 DATABASE_URL found, using PostgreSQL");
-    
-    // Railway sends: postgresql://user:pass@host:port/db
-    // Parse manually instead of using Uri
+    Console.WriteLine("📦 DATABASE_URL found, using PostgreSQL");
     var connectionString = ParsePostgresUrl(databaseUrl);
     
     builder.Services.AddDbContext<AppDbContext>(opt =>
@@ -28,44 +25,31 @@ if (usePostgres)
 }
 else
 {
-    // SQLite for local development
     builder.Services.AddDbContext<AppDbContext>(opt =>
         opt.UseSqlite(builder.Configuration.GetConnectionString("Default") ?? "Data Source=discover_madina.db"));
     
     Console.WriteLine("✅ Using SQLite (Local Development)");
 }
 
-// Helper function to parse PostgreSQL URL
 static string ParsePostgresUrl(string url)
 {
-    // Expected format: postgresql://username:password@host:port/database
     try
     {
-        // Remove "postgresql://" prefix
         var withoutPrefix = url.Replace("postgresql://", "");
-        
-        // Split credentials and host/db
         var atIndex = withoutPrefix.IndexOf('@');
         var credentials = withoutPrefix.Substring(0, atIndex);
         var hostAndDb = withoutPrefix.Substring(atIndex + 1);
-        
-        // Parse credentials
         var colonIndex = credentials.IndexOf(':');
         var username = credentials.Substring(0, colonIndex);
         var password = credentials.Substring(colonIndex + 1);
-        
-        // Parse host:port/database
         var slashIndex = hostAndDb.IndexOf('/');
         var hostAndPort = hostAndDb.Substring(0, slashIndex);
         var database = hostAndDb.Substring(slashIndex + 1);
-        
-        // Parse host and port
         var portColonIndex = hostAndPort.LastIndexOf(':');
         var host = hostAndPort.Substring(0, portColonIndex);
         var port = hostAndPort.Substring(portColonIndex + 1);
         
-        var connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};SslMode=Require;TrustServerCertificate=true";
-        return connectionString;
+        return $"Host={host};Port={port};Database={database};Username={username};Password={password};SslMode=Require;TrustServerCertificate=true";
     }
     catch (Exception ex)
     {
@@ -113,19 +97,75 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
 
-// Migrate and Seed Database
+// Create tables and seed database
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     
+    // Ensure database is created (for SQLite) or tables exist (for PostgreSQL)
     if (usePostgres)
     {
-        // For PostgreSQL, apply migrations
-        db.Database.Migrate();
+        // Manually create tables for PostgreSQL if they don't exist
+        db.Database.ExecuteSqlRaw(@"
+            CREATE TABLE IF NOT EXISTS ""Admins"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""Username"" TEXT NOT NULL,
+                ""PasswordHash"" TEXT NOT NULL,
+                ""Role"" TEXT NOT NULL,
+                ""ProfileImageUrl"" TEXT,
+                ""CreatedAt"" TIMESTAMP NOT NULL,
+                ""CreatedBy"" INTEGER
+            );
+            
+            CREATE TABLE IF NOT EXISTS ""Users"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""Username"" TEXT NOT NULL,
+                ""Email"" TEXT NOT NULL,
+                ""PasswordHash"" TEXT NOT NULL,
+                ""PreferredLanguage"" TEXT NOT NULL,
+                ""ProfileImageUrl"" TEXT,
+                ""CreatedAt"" TIMESTAMP NOT NULL
+            );
+            
+            CREATE TABLE IF NOT EXISTS ""Attractions"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""Name"" TEXT NOT NULL,
+                ""NameEn"" TEXT NOT NULL,
+                ""Category"" TEXT NOT NULL,
+                ""Icon"" TEXT NOT NULL,
+                ""Latitude"" DECIMAL(10,7) NOT NULL,
+                ""Longitude"" DECIMAL(10,7) NOT NULL,
+                ""RatingAvg"" REAL NOT NULL,
+                ""OpeningHours"" TEXT NOT NULL,
+                ""Description"" TEXT NOT NULL,
+                ""ImageUrl"" TEXT,
+                ""IsFeatured"" BOOLEAN NOT NULL,
+                ""CreatedAt"" TIMESTAMP NOT NULL
+            );
+            
+            CREATE TABLE IF NOT EXISTS ""Reviews"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""Rating"" INTEGER NOT NULL,
+                ""Comment"" TEXT NOT NULL,
+                ""Status"" TEXT NOT NULL,
+                ""CreatedAt"" TIMESTAMP NOT NULL,
+                ""UserId"" INTEGER NOT NULL REFERENCES ""Users""(""Id""),
+                ""AttractionId"" INTEGER NOT NULL REFERENCES ""Attractions""(""Id"")
+            );
+            
+            CREATE TABLE IF NOT EXISTS ""AttractionPhotos"" (
+                ""Id"" SERIAL PRIMARY KEY,
+                ""AttractionId"" INTEGER NOT NULL REFERENCES ""Attractions""(""Id""),
+                ""ImageUrl"" TEXT NOT NULL,
+                ""IsPrimary"" BOOLEAN NOT NULL,
+                ""DisplayOrder"" INTEGER NOT NULL,
+                ""CreatedAt"" TIMESTAMP NOT NULL
+            );
+        ");
+        Console.WriteLine("✅ PostgreSQL tables created");
     }
     else
     {
-        // For SQLite, ensure created
         db.Database.EnsureCreated();
     }
     
