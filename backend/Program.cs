@@ -15,11 +15,11 @@ var usePostgres = !string.IsNullOrEmpty(databaseUrl);
 
 if (usePostgres)
 {
-    // PostgreSQL for Railway
-    var uri = new Uri(databaseUrl);
-    var userInfo = uri.UserInfo.Split(':');
+    Console.WriteLine($"📦 DATABASE_URL found, using PostgreSQL");
     
-    var connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SslMode=Require;TrustServerCertificate=true";
+    // Railway sends: postgresql://user:pass@host:port/db
+    // Parse manually instead of using Uri
+    var connectionString = ParsePostgresUrl(databaseUrl);
     
     builder.Services.AddDbContext<AppDbContext>(opt =>
         opt.UseNpgsql(connectionString));
@@ -33,6 +33,45 @@ else
         opt.UseSqlite(builder.Configuration.GetConnectionString("Default") ?? "Data Source=discover_madina.db"));
     
     Console.WriteLine("✅ Using SQLite (Local Development)");
+}
+
+// Helper function to parse PostgreSQL URL
+static string ParsePostgresUrl(string url)
+{
+    // Expected format: postgresql://username:password@host:port/database
+    try
+    {
+        // Remove "postgresql://" prefix
+        var withoutPrefix = url.Replace("postgresql://", "");
+        
+        // Split credentials and host/db
+        var atIndex = withoutPrefix.IndexOf('@');
+        var credentials = withoutPrefix.Substring(0, atIndex);
+        var hostAndDb = withoutPrefix.Substring(atIndex + 1);
+        
+        // Parse credentials
+        var colonIndex = credentials.IndexOf(':');
+        var username = credentials.Substring(0, colonIndex);
+        var password = credentials.Substring(colonIndex + 1);
+        
+        // Parse host:port/database
+        var slashIndex = hostAndDb.IndexOf('/');
+        var hostAndPort = hostAndDb.Substring(0, slashIndex);
+        var database = hostAndDb.Substring(slashIndex + 1);
+        
+        // Parse host and port
+        var portColonIndex = hostAndPort.LastIndexOf(':');
+        var host = hostAndPort.Substring(0, portColonIndex);
+        var port = hostAndPort.Substring(portColonIndex + 1);
+        
+        var connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};SslMode=Require;TrustServerCertificate=true";
+        return connectionString;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Failed to parse DATABASE_URL: {ex.Message}");
+        throw;
+    }
 }
 
 // Repositories
