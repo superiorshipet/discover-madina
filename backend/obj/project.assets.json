@@ -18,7 +18,7 @@
       "Humanizer.Core/2.14.1": {
         "type": "package",
         "compile": {
-          "lib/net6.0/Humanizer.dll": {
+          "lib/net6.0/_._": {
             "related": ".xml"
           }
         },
@@ -57,7 +57,7 @@
           "System.Security.Permissions": "7.0.0"
         },
         "compile": {
-          "ref/net7.0/Microsoft.Build.dll": {
+          "ref/net7.0/_._": {
             "related": ".xml"
           }
         },
@@ -70,7 +70,7 @@
       "Microsoft.Build.Framework/17.14.28": {
         "type": "package",
         "compile": {
-          "ref/net9.0/Microsoft.Build.Framework.dll": {
+          "ref/net9.0/_._": {
             "related": ".xml"
           }
         },
@@ -94,7 +94,7 @@
           "System.Security.Cryptography.ProtectedData": "9.0.0"
         },
         "compile": {
-          "ref/net9.0/Microsoft.Build.Tasks.Core.dll": {
+          "ref/net9.0/_._": {
             "related": ".xml"
           }
         },
@@ -113,7 +113,7 @@
           "System.Security.Cryptography.ProtectedData": "9.0.0"
         },
         "compile": {
-          "ref/net9.0/Microsoft.Build.Utilities.Core.dll": {
+          "ref/net9.0/_._": {
             "related": ".xml"
           }
         },
@@ -136,7 +136,7 @@
           "Microsoft.CodeAnalysis.Analyzers": "3.11.0"
         },
         "compile": {
-          "lib/net9.0/Microsoft.CodeAnalysis.dll": {
+          "lib/net9.0/_._": {
             "related": ".pdb;.xml"
           }
         },
@@ -194,7 +194,7 @@
           "Microsoft.CodeAnalysis.Common": "[4.14.0]"
         },
         "compile": {
-          "lib/net9.0/Microsoft.CodeAnalysis.CSharp.dll": {
+          "lib/net9.0/_._": {
             "related": ".pdb;.xml"
           }
         },
@@ -256,7 +256,7 @@
           "System.Composition": "9.0.0"
         },
         "compile": {
-          "lib/net9.0/Microsoft.CodeAnalysis.CSharp.Workspaces.dll": {
+          "lib/net9.0/_._": {
             "related": ".pdb;.xml"
           }
         },
@@ -316,7 +316,7 @@
           "System.Composition": "9.0.0"
         },
         "compile": {
-          "lib/net9.0/Microsoft.CodeAnalysis.Workspaces.dll": {
+          "lib/net9.0/_._": {
             "related": ".pdb;.xml"
           }
         },
@@ -388,10 +388,7 @@
           "System.Windows.Extensions": "9.0.0"
         },
         "compile": {
-          "lib/net9.0/Microsoft.CodeAnalysis.ExternalAccess.RazorCompiler.dll": {},
-          "lib/net9.0/Microsoft.CodeAnalysis.Workspaces.MSBuild.dll": {
-            "related": ".pdb;.xml"
-          }
+          "lib/net9.0/_._": {}
         },
         "runtime": {
           "lib/net9.0/Microsoft.CodeAnalysis.ExternalAccess.RazorCompiler.dll": {},
@@ -787,7 +784,7 @@
           "Newtonsoft.Json": "13.0.3"
         },
         "compile": {
-          "lib/net10.0/Microsoft.EntityFrameworkCore.Design.dll": {
+          "lib/net10.0/_._": {
             "related": ".xml"
           }
         },
@@ -974,7 +971,7 @@
       "Microsoft.NET.StringTools/17.14.28": {
         "type": "package",
         "compile": {
-          "ref/net9.0/Microsoft.NET.StringTools.dll": {
+          "ref/net9.0/_._": {
             "related": ".xml"
           }
         },
@@ -1003,7 +1000,7 @@
           "System.CodeDom": "6.0.0"
         },
         "compile": {
-          "lib/net6.0/Mono.TextTemplating.dll": {}
+          "lib/net6.0/_._": {}
         },
         "runtime": {
           "lib/net6.0/Mono.TextTemplating.dll": {}
@@ -1015,12 +1012,43 @@
       "Newtonsoft.Json/13.0.3": {
         "type": "package",
         "compile": {
-          "lib/net6.0/Newtonsoft.Json.dll": {
+          "lib/net6.0/_._": {
             "related": ".xml"
           }
         },
         "runtime": {
           "lib/net6.0/Newtonsoft.Json.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "Npgsql/10.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net10.0/Npgsql.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net10.0/Npgsql.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "Npgsql.EntityFrameworkCore.PostgreSQL/10.0.0": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "[10.0.0, 11.0.0)",
+          "Microsoft.EntityFrameworkCore.Relational": "[10.0.0, 11.0.0)",
+          "Npgsql": "10.0.0"
+        },
+        "compile": {
+          "lib/net10.0/Npgsql.EntityFrameworkCore.PostgreSQL.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net10.0/Npgsql.EntityFrameworkCore.PostgreSQL.dll": {
             "related": ".xml"
           }
         }
@@ -1234,7 +1262,7 @@
       "System.CodeDom/9.0.0": {
         "type": "package",
         "compile": {
-          "lib/net9.0/System.CodeDom.dll": {
+          "lib/net9.0/_._": {
             "related": ".xml"
           }
         },
@@ -1269,7 +1297,7 @@
       "System.Composition.AttributedModel/9.0.0": {
         "type": "package",
         "compile": {
-          "lib/net9.0/System.Composition.AttributedModel.dll": {
+          "lib/net9.0/_._": {
             "related": ".xml"
           }
         },
@@ -1288,7 +1316,7 @@
           "System.Composition.AttributedModel": "9.0.0"
         },
         "compile": {
-          "lib/net9.0/System.Composition.Convention.dll": {
+          "lib/net9.0/_._": {
             "related": ".xml"
           }
         },
@@ -1307,7 +1335,7 @@
           "System.Composition.Runtime": "9.0.0"
         },
         "compile": {
-          "lib/net9.0/System.Composition.Hosting.dll": {
+          "lib/net9.0/_._": {
             "related": ".xml"
           }
         },
@@ -1323,7 +1351,7 @@
       "System.Composition.Runtime/9.0.0": {
         "type": "package",
         "compile": {
-          "lib/net9.0/System.Composition.Runtime.dll": {
+          "lib/net9.0/_._": {
             "related": ".xml"
           }
         },
@@ -1344,7 +1372,7 @@
           "System.Composition.Runtime": "9.0.0"
         },
         "compile": {
-          "lib/net9.0/System.Composition.TypedParts.dll": {
+          "lib/net9.0/_._": {
             "related": ".xml"
           }
         },
@@ -1363,7 +1391,7 @@
           "System.Security.Cryptography.ProtectedData": "9.0.0"
         },
         "compile": {
-          "lib/net9.0/System.Configuration.ConfigurationManager.dll": {
+          "lib/net9.0/_._": {
             "related": ".xml"
           }
         },
@@ -1379,7 +1407,7 @@
       "System.Formats.Nrbf/9.0.0": {
         "type": "package",
         "compile": {
-          "lib/net9.0/System.Formats.Nrbf.dll": {
+          "lib/net9.0/_._": {
             "related": ".xml"
           }
         },
@@ -1412,7 +1440,7 @@
       "System.Reflection.MetadataLoadContext/7.0.0": {
         "type": "package",
         "compile": {
-          "lib/net7.0/System.Reflection.MetadataLoadContext.dll": {
+          "lib/net7.0/_._": {
             "related": ".xml"
           }
         },
@@ -1431,7 +1459,7 @@
           "System.Formats.Nrbf": "9.0.0"
         },
         "compile": {
-          "lib/net9.0/System.Resources.Extensions.dll": {
+          "lib/net9.0/_._": {
             "related": ".xml"
           }
         },
@@ -1447,7 +1475,7 @@
       "System.Security.Cryptography.Pkcs/9.0.0": {
         "type": "package",
         "compile": {
-          "lib/net9.0/System.Security.Cryptography.Pkcs.dll": {
+          "lib/net9.0/_._": {
             "related": ".xml"
           }
         },
@@ -1469,7 +1497,7 @@
       "System.Security.Cryptography.ProtectedData/9.0.0": {
         "type": "package",
         "compile": {
-          "lib/net9.0/System.Security.Cryptography.ProtectedData.dll": {
+          "lib/net9.0/_._": {
             "related": ".xml"
           }
         },
@@ -1488,7 +1516,7 @@
           "System.Windows.Extensions": "9.0.0"
         },
         "compile": {
-          "lib/net9.0/System.Security.Permissions.dll": {
+          "lib/net9.0/_._": {
             "related": ".xml"
           }
         },
@@ -1504,7 +1532,7 @@
       "System.Windows.Extensions/9.0.0": {
         "type": "package",
         "compile": {
-          "lib/net9.0/System.Windows.Extensions.dll": {
+          "lib/net9.0/_._": {
             "related": ".xml"
           }
         },
@@ -3361,6 +3389,40 @@
         "packageIcon.png"
       ]
     },
+    "Npgsql/10.0.0": {
+      "sha512": "xZAYhPOU2rUIFpV48xsqhCx9vXs6Y+0jX2LCoSEfDFYMw9jtAOUk3iQsCnDLrFIv9NT3JGMihn7nnuZsPKqJmA==",
+      "type": "package",
+      "path": "npgsql/10.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "lib/net10.0/Npgsql.dll",
+        "lib/net10.0/Npgsql.xml",
+        "lib/net8.0/Npgsql.dll",
+        "lib/net8.0/Npgsql.xml",
+        "lib/net9.0/Npgsql.dll",
+        "lib/net9.0/Npgsql.xml",
+        "npgsql.10.0.0.nupkg.sha512",
+        "npgsql.nuspec",
+        "postgresql.png"
+      ]
+    },
+    "Npgsql.EntityFrameworkCore.PostgreSQL/10.0.0": {
+      "sha512": "E2+uSWxSB8LdsUVwPaqRWOcGOP92biry2JEwc0KJMdLJF+aZdczeIdEXVwEyv4nSVMQJH0o8tLhyAMiR6VF0lw==",
+      "type": "package",
+      "path": "npgsql.entityframeworkcore.postgresql/10.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "lib/net10.0/Npgsql.EntityFrameworkCore.PostgreSQL.dll",
+        "lib/net10.0/Npgsql.EntityFrameworkCore.PostgreSQL.xml",
+        "npgsql.entityframeworkcore.postgresql.10.0.0.nupkg.sha512",
+        "npgsql.entityframeworkcore.postgresql.nuspec",
+        "postgresql.png"
+      ]
+    },
     "SQLitePCLRaw.bundle_e_sqlite3/2.1.11": {
       "sha512": "DC4nA7yWnf4UZdgJDF+9Mus4/cb0Y3Sfgi3gDnAoKNAIBwzkskNAbNbyu+u4atT0ruVlZNJfwZmwiEwE5oz9LQ==",
       "type": "package",
@@ -3992,9 +4054,10 @@
       "Microsoft.AspNetCore.Authentication.JwtBearer >= 10.0.0",
       "Microsoft.EntityFrameworkCore.Design >= 10.0.0",
       "Microsoft.EntityFrameworkCore.Sqlite >= 10.0.0",
-      "Microsoft.IdentityModel.Tokens >= 8.3.3",
+      "Microsoft.IdentityModel.Tokens >= 8.4.0",
+      "Npgsql.EntityFrameworkCore.PostgreSQL >= 10.0.0",
       "Swashbuckle.AspNetCore >= 7.3.1",
-      "System.IdentityModel.Tokens.Jwt >= 8.3.3"
+      "System.IdentityModel.Tokens.Jwt >= 8.4.0"
     ]
   },
   "packageFolders": {
@@ -4050,6 +4113,8 @@
             "version": "[10.0.0, )"
           },
           "Microsoft.EntityFrameworkCore.Design": {
+            "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+            "suppressParent": "All",
             "target": "Package",
             "version": "[10.0.0, )"
           },
@@ -4059,7 +4124,11 @@
           },
           "Microsoft.IdentityModel.Tokens": {
             "target": "Package",
-            "version": "[8.3.3, )"
+            "version": "[8.4.0, )"
+          },
+          "Npgsql.EntityFrameworkCore.PostgreSQL": {
+            "target": "Package",
+            "version": "[10.0.0, )"
           },
           "Swashbuckle.AspNetCore": {
             "target": "Package",
@@ -4067,7 +4136,7 @@
           },
           "System.IdentityModel.Tokens.Jwt": {
             "target": "Package",
-            "version": "[8.3.3, )"
+            "version": "[8.4.0, )"
           }
         },
         "imports": [
@@ -4089,7 +4158,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/10.0.104/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/10.0.106/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.AspNetCore": "(,10.0.32767]",
           "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",
@@ -4506,27 +4575,5 @@
         }
       }
     }
-  },
-  "logs": [
-    {
-      "code": "NU1603",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "DiscoverMadina depends on Microsoft.IdentityModel.Tokens (>= 8.3.3) but Microsoft.IdentityModel.Tokens 8.3.3 was not found. Microsoft.IdentityModel.Tokens 8.4.0 was resolved instead.",
-      "libraryId": "Microsoft.IdentityModel.Tokens",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    },
-    {
-      "code": "NU1603",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "DiscoverMadina depends on System.IdentityModel.Tokens.Jwt (>= 8.3.3) but System.IdentityModel.Tokens.Jwt 8.3.3 was not found. System.IdentityModel.Tokens.Jwt 8.4.0 was resolved instead.",
-      "libraryId": "System.IdentityModel.Tokens.Jwt",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    }
-  ]
+  }
 }
