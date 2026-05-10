@@ -309,7 +309,7 @@ function openDetail(place) {
   clearRoute();
   
   loadReviewsForPlace(place.id);
-  
+  checkIfSaved(place.id);
   if (window.innerWidth <= 768) {
     const sidebar = document.getElementById('sidebar');
     if (sidebar) sidebar.classList.remove('mobile-open');
@@ -892,3 +892,59 @@ document.addEventListener('click', function(e) {
 });
 
 
+
+// ============================================
+// SAVE PLACE FUNCTION
+// ============================================
+async function savePlace() {
+  if (!currentPlace) return;
+  
+  if (!isLoggedIn()) {
+    showToast('🔐 ' + t('loginRequired'));
+    setTimeout(function() { window.location.href = 'pages/login.html'; }, 1500);
+    return;
+  }
+  
+  var token = getToken();
+  try {
+    var res = await fetch(API_BASE + '/savedplaces/' + currentPlace.id, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    
+    if (res.ok) {
+      showToast('✅ ' + t('savedSuccessfully'));
+      var saveBtn = document.getElementById('savePlaceBtn');
+      if (saveBtn) {
+        saveBtn.innerHTML = '❤️ ' + t('saved');
+        saveBtn.style.color = 'var(--gold)';
+      }
+    } else if (res.status === 409) {
+      showToast('⚠️ ' + t('alreadySaved'));
+    } else {
+      showToast('❌ ' + t('saveFailed'));
+    }
+  } catch(e) {
+    showToast('❌ ' + t('networkError'));
+  }
+}
+
+// Check if place is saved when opening detail
+async function checkIfSaved(placeId) {
+  if (!isLoggedIn()) return;
+  
+  var token = getToken();
+  try {
+    var res = await fetch(API_BASE + '/savedplaces/check/' + placeId, {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (res.ok) {
+      var data = await res.json();
+      var saveBtn = document.getElementById('savePlaceBtn');
+      if (saveBtn && data.saved) {
+        saveBtn.innerHTML = '❤️ ' + t('saved');
+        saveBtn.style.color = 'var(--gold)';
+      }
+    }
+  } catch(e) {}
+}

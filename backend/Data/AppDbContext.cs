@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<ChatLog> ChatLogs => Set<ChatLog>();
     public DbSet<AttractionPhoto> AttractionPhotos => Set<AttractionPhoto>(); // Add this line
+    public DbSet<SavedPlace> SavedPlaces => Set<SavedPlace>();
 
     protected override void OnModelCreating(ModelBuilder mb)
     {

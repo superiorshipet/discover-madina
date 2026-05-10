@@ -191,3 +191,20 @@ const TRANSLATIONS = {
     dataLoadedForEdit: 'Data loaded for editing',
   }
 };
+
+// Add to TRANSLATIONS (both ar and en):
+// In the 'ar' section, add:
+// savedSuccessfully: 'تم الحفظ بنجاح',
+// alreadySaved: 'تم الحفظ مسبقاً',
+// saveFailed: 'فشل الحفظ',
+// saved: 'محفوظ',
+// mySavedPlaces: 'الأماكن المحفوظة',
+// noSavedPlaces: 'لا توجد أماكن محفوظة',
+
+// In the 'en' section, add:
+// savedSuccessfully: 'Saved successfully',
+// alreadySaved: 'Already saved',
+// saveFailed: 'Save failed',
+// saved: 'Saved',
+// mySavedPlaces: 'My Saved Places',
+// noSavedPlaces: 'No saved places',
