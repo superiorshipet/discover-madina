@@ -66,7 +66,6 @@ async function doRegister() {
   } catch(err) { showError(t('serverError')); btn.disabled = false; btn.innerHTML = '<span>' + t('createAccount') + '</span>'; }
 }
 </script>
-<script>function toggleLang(){var l=(typeof currentLang!=="undefined"?currentLang:"ar")==="ar"?"en":"ar";localStorage.setItem("language",l);location.reload();}document.getElementById("lt").textContent=(typeof currentLang!=="undefined"&&currentLang==="ar")?"EN":"AR";</script>
 <script src="../js/i18n.js"></script>
 </body>
 </html>
