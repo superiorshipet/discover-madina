@@ -405,7 +405,6 @@
 /home/superior/madina/discover-madina/backend/obj/Debug/net10.0/DiscoverMadina.pdb
 /home/superior/madina/discover-madina/backend/obj/Debug/net10.0/DiscoverMadina.genruntimeconfig.cache
 /home/superior/madina/discover-madina/backend/obj/Debug/net10.0/ref/DiscoverMadina.dll
-/home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/e1cts9np3j-{0}-cczuj1ipil-cczuj1ipil.gz
 /home/superior/madina/discover-madina/backend/bin/Debug/net10.0/Npgsql.dll
 /home/superior/madina/discover-madina/backend/bin/Debug/net10.0/Npgsql.EntityFrameworkCore.PostgreSQL.dll
 /home/superior/madina/discover-madina/backend/bin/Debug/net10.0/Microsoft.Data.Sqlite.dll
@@ -436,11 +435,4 @@
 /home/superior/madina/discover-madina/backend/bin/Debug/net10.0/runtimes/win-arm64/native/e_sqlite3.dll
 /home/superior/madina/discover-madina/backend/bin/Debug/net10.0/runtimes/win-x64/native/e_sqlite3.dll
 /home/superior/madina/discover-madina/backend/bin/Debug/net10.0/runtimes/win-x86/native/e_sqlite3.dll
-/home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/3gcen9llub-{0}-h8ngzyv56y-h8ngzyv56y.gz
-/home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/5iu8i7ynxg-{0}-12a2wsmuz6-12a2wsmuz6.gz
-/home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/zkfpvuq64q-{0}-phkmcir6o2-phkmcir6o2.gz
-/home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/z576cxtj5c-{0}-gv8ayhii2b-gv8ayhii2b.gz
-/home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/v6pzjhgr7d-{0}-till3sf042-till3sf042.gz
-/home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/1tixsfwdsp-{0}-ngqy25e2k6-ngqy25e2k6.gz
-/home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/kq8u9j5hj8-{0}-rsnrbfywze-rsnrbfywze.gz
-/home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/gejnd2e8s5-{0}-aat88zyuu0-aat88zyuu0.gz
+/home/superior/madina/discover-madina/backend/obj/Debug/net10.0/compressed/5iu8i7ynxg-{0}-yhn68a6vgd-yhn68a6vgd.gz

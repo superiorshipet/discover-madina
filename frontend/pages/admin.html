@@ -330,8 +330,8 @@
 
 <script src="../js/data.js"></script>
 <script>
-function toggleLanguage(){ toggleLang(); }
-function toggleLang(){var l=(typeof currentLang!=="undefined"?currentLang:"ar")==="ar"?"en":"ar";localStorage.setItem("language",l);location.reload();}
+function toggleLanguage(){ toggleLanguage(); }
+function toggleLanguage(){var l=(typeof currentLang!=="undefined"?currentLang:"ar")==="ar"?"en":"ar";localStorage.setItem("language",l);location.reload();}
 setTimeout(function(){ var lt = document.getElementById("lt"); if(lt && typeof currentLang !== "undefined") lt.textContent = currentLang === "ar" ? "EN" : "AR"; }, 300);
 // Mobile Sidebar Functions
 function toggleMobileSidebar() {

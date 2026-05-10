@@ -30,7 +30,7 @@
 </head>
 <body>
 <button style="position:fixed;top:16px;right:16px;z-index:999;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;cursor:pointer;font-family:Cairo;color:var(--text-main);" onclick="toggleLanguage()">🌐 <span id="langText">EN</span></button>
-<button style="position:fixed;top:16px;right:16px;z-index:999;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;cursor:pointer;font-family:Cairo;color:var(--text-main);font-size:0.85rem;" onclick="toggleLang()">🌐 <span id="lt">EN</span></button>
+<button style="position:fixed;top:16px;right:16px;z-index:999;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;cursor:pointer;font-family:Cairo;color:var(--text-main);font-size:0.85rem;" onclick="toggleLanguage()">🌐 <span id="lt">EN</span></button>
 <div class="auth-wrap">
   <div class="auth-logo"><div class="auth-logo-icon">م</div><h1 data-i18n="appName">اكتشف المدينة</h1><p data-i18n="appSub">DISCOVER MADINA</p></div>
   <div class="auth-card">
@@ -50,6 +50,7 @@
 </div>
 <script src="../js/data.js"></script>
 <script>
+function toggleLanguage(){var c=localStorage.getItem("language")||"ar";var n=c=="ar"?"en":"ar";localStorage.setItem("language",n);location.reload();}
 
 function t(key) { var lang = typeof currentLang !== 'undefined' ? currentLang : 'ar'; if (typeof TRANSLATIONS === 'undefined') return key; return (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) || (TRANSLATIONS['en'] && TRANSLATIONS['en'][key]) || key; }
 
