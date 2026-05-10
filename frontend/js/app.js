@@ -918,6 +918,7 @@ async function savePlace() {
     showToast('❌ ' + t('networkError'));
   }
 }
+window.savePlace = savePlace;
 
 // Check if place is saved when opening detail
 async function checkIfSaved(placeId) {
@@ -938,3 +939,4 @@ async function checkIfSaved(placeId) {
     }
   } catch(e) {}
 }
+window.checkIfSaved = checkIfSaved;
