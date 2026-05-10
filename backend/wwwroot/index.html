@@ -103,18 +103,6 @@
 <script src="js/data.js"></script>
 <script src="js/app.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  setTimeout(function() {
-    document.querySelectorAll('[data-i18n]').forEach(function(el) {
-      el.textContent = t(el.getAttribute('data-i18n'));
-    });
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
-      el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
-    });
-    var langText = document.getElementById('langText');
-      if (langText) langText.textContent = currentLang === 'ar' ? 'EN' : 'AR';
-  }, 100);
-});
 </script>
 <script src="js/i18n.js"></script>
 </body>
