@@ -38,7 +38,6 @@
 <script>
 function toggleLanguage(){var c=localStorage.getItem("language")||"ar";var n=c=="ar"?"en":"ar";localStorage.setItem("language",n);location.reload();}
 
-var API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
   ? 'http://localhost:8080/api' 
   : window.location.origin + '/api';
 
