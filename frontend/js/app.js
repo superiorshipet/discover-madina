@@ -940,3 +940,23 @@ async function checkIfSaved(placeId) {
   } catch(e) {}
 }
 window.checkIfSaved = checkIfSaved;
+
+// Expose functions globally for HTML onclick handlers
+window.getDirections = getDirections;
+window.openReview = openReview;
+window.savePlace = savePlace;
+window.closeDetail = closeDetail;
+window.setRating = setRating;
+window.closeReview = closeReview;
+window.submitReview = submitReview;
+window.prevPhoto = prevPhoto;
+window.nextPhoto = nextPhoto;
+window.goToPhoto = goToPhoto;
+window.locateUser = locateUser;
+window.toggleSidebar = toggleSidebar;
+window.filterCat = filterCat;
+window.openChatbot = openChatbot;
+window.closeChatbot = closeChatbot;
+window.clearChat = clearChat;
+window.sendChat = sendChat;
+window.logout = logout;
