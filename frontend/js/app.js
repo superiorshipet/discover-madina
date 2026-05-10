@@ -38,7 +38,7 @@ function toggleLanguage() {
 function getToken()    { return localStorage.getItem('token'); }
 function getUsername() { return localStorage.getItem('username'); }
 function getRole()     { return localStorage.getItem('role') || 'guest'; }
-function isLoggedIn()  { return getRole() !== "guest" function isLoggedIn()  { return getRole() !== 'guest' && getToken(); }function isLoggedIn()  { return getRole() !== 'guest' && getToken(); } getToken() !== null; }
+function isLoggedIn()  { return getRole() !== "guest" && getToken() !== null; }
 function isAdmin()     { return getRole() === 'admin' || getRole() === 'superadmin'; }
 
 function toggleAdminBtn() {
