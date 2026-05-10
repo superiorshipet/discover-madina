@@ -510,16 +510,6 @@ function showRouteBanner(distKm, distMin) {
 }
 
 // Save place
-function savePlace() {
-  if (!currentPlace) return;
-  if (!isLoggedIn()) {
-    showToast('🔐 ' + t('loginRequired'));
-    setTimeout(() => window.location.href = 'pages/login.html', 1500);
-    return;
-  }
-  showToast(`✅ ${t('saveSuccess')} "${currentPlace.name}"`);
-}
-
 // Multiple image upload
 function triggerImageUpload() {
   if (!currentPlace) return;
