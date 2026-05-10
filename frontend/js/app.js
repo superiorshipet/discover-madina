@@ -15,6 +15,25 @@ let routeLayer = null;
 let currentPhotoIndex = 0;
 let currentPhotos = [];
 
+// Language state - use the one from data.js, don't redeclare
+// currentLang is already declared in data.js
+
+// Translation function
+function t(key) {
+  return (typeof TRANSLATIONS !== 'undefined' && TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key]) || 
+         (typeof TRANSLATIONS !== 'undefined' && TRANSLATIONS['en'] && TRANSLATIONS['en'][key]) || 
+         key;
+}
+
+// Toggle language
+function toggleLanguage() {
+  currentLang = currentLang === 'ar' ? 'en' : 'ar';
+  localStorage.setItem("language", currentLang);
+  document.documentElement.lang = currentLang;
+  document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+  location.reload();
+}
+
 // Auth functions
 function getToken()    { return localStorage.getItem('token'); }
 function getUsername() { return localStorage.getItem('username'); }
@@ -49,17 +68,20 @@ function authFetch(url, options = {}) {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
+  document.documentElement.lang = currentLang;
+  document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+  
   if (!initAuthGuard()) return;
 
   const username = getUsername();
   const loginBtn = document.getElementById('loginBtn');
   if (loginBtn) {
     if (isLoggedIn() && username) {
-      loginBtn.innerHTML = `🚪 تسجيل الخروج (${username})`;
+      loginBtn.innerHTML = `🚪 ${t('logout')} (${username})`;
       loginBtn.onclick = logout;
       loginBtn.href = '#';
     } else {
-      loginBtn.textContent = '🔐 تسجيل الدخول';
+      loginBtn.textContent = '🔐 ' + t('login');
       loginBtn.href = 'pages/login.html';
       loginBtn.onclick = null;
     }
@@ -72,7 +94,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     welcomeMsg.style.display = 'block';
   }
 
+  document.addEventListener('DOMContentLoaded', function() {
+    const langText = document.getElementById('langText');
+    if (langText) {
+      langText.textContent = currentLang === 'ar' ? 'EN' : 'AR';
+    }
+  });
+
   toggleAdminBtn();
+
   initMap();
   initDraggableSidebar();
   initDraggableSheet();
@@ -189,7 +219,7 @@ function doSearch() { applyFilter(); }
 function renderPlacesList(places) {
   const el = document.getElementById('placesList');
   if (!places.length) {
-    el.innerHTML = '<p style="color:var(--text-dim);font-size:.85rem;padding:16px;text-align:center">لا توجد نتائج</p>';
+    el.innerHTML = '<p style="color:var(--text-dim);font-size:.85rem;padding:16px;text-align:center">' + t('noResults') + '</p>';
     return;
   }
   el.innerHTML = places.map(p => `
@@ -199,7 +229,7 @@ function renderPlacesList(places) {
         : p.icon}</div>
       <div class="pc-body">
         <div class="pc-name">${p.name}</div>
-        <div class="pc-sub">${CATEGORY_LABELS[p.category]} · ${p.hours}</div>
+        <div class="pc-sub">${CATEGORY_LABELS[p.category] || p.category} · ${p.hours}</div>
       </div>
       <div class="pc-rating">★ ${p.rating}</div>
     </div>
@@ -209,7 +239,7 @@ function renderPlacesList(places) {
 function renderBottomSheet(places) {
   const el = document.getElementById('bsCards');
   if (!places.length) {
-    el.innerHTML = '<p style="color:var(--text-dim);padding:16px;text-align:center;">لا توجد أماكن مقترحة</p>';
+    el.innerHTML = '<p style="color:var(--text-dim);padding:16px;text-align:center;">' + t('noSuggestedPlaces') + '</p>';
     return;
   }
   el.innerHTML = places.map(p => `
@@ -223,14 +253,12 @@ function renderBottomSheet(places) {
   if (!document.querySelector('.bs-drag-hint')) {
     const hint = document.createElement('div');
     hint.className = 'bs-drag-hint';
-    hint.textContent = '↑ اسحب للأعلى للمزيد ↑';
+    hint.textContent = t('dragHint');
     el.parentElement.appendChild(hint);
   }
 }
 
-// ============================================
-// REVIEWS - Load approved reviews for a place
-// ============================================
+// Reviews - Load approved reviews for a place
 async function loadReviewsForPlace(attractionId) {
   const reviewsContainer = document.getElementById('reviewsList');
   if (!reviewsContainer) return;
@@ -243,7 +271,7 @@ async function loadReviewsForPlace(attractionId) {
     const approvedReviews = reviews.filter(r => r.status === 'approved');
     
     if (approvedReviews.length === 0) {
-      reviewsContainer.innerHTML = '<p class="no-reviews">لا توجد تقييمات بعد. كن أول من يقيم!</p>';
+      reviewsContainer.innerHTML = '<p class="no-reviews">' + t('noReviews') + '</p>';
       return;
     }
     
@@ -255,13 +283,13 @@ async function loadReviewsForPlace(attractionId) {
           <span class="review-user">👤 ${r.username || 'مستخدم'}</span>
           <span class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
         </div>
-        <div class="review-comment">${r.comment || 'بدون تعليق'}</div>
+        <div class="review-comment">${r.comment || ''}</div>
         <div class="review-date">${new Date(r.createdAt).toLocaleDateString('ar-SA')}</div>
       </div>
     `).join('');
   } catch (e) {
     console.error('Failed to load reviews:', e);
-    reviewsContainer.innerHTML = '<p class="no-reviews">تعذر تحميل التقييمات</p>';
+    reviewsContainer.innerHTML = '<p class="no-reviews">' + t('couldNotLoadReviews') + '</p>';
   }
 }
 
@@ -298,7 +326,7 @@ function updateDetailContent() {
   } else {
     imgEl.textContent = place.icon;
   }
-  document.getElementById('detailCat').textContent = CATEGORY_LABELS[place.category];
+  document.getElementById('detailCat').textContent = CATEGORY_LABELS[place.category] || place.category;
   document.getElementById('detailName').textContent = place.name;
   document.getElementById('detailRating').textContent = `★ ${place.rating}`;
   document.getElementById('detailHours').textContent = `⏰ ${place.hours}`;
@@ -352,7 +380,7 @@ function closeDetail() {
   
   const reviewsContainer = document.getElementById('reviewsList');
   if (reviewsContainer) {
-    reviewsContainer.innerHTML = '<p class="no-reviews">لا توجد تقييمات بعد. كن أول من يقيم!</p>';
+    reviewsContainer.innerHTML = '<p class="no-reviews">' + t('noReviews') + '</p>';
   }
   
   if (window.innerWidth <= 768) {
@@ -363,8 +391,8 @@ function closeDetail() {
 
 // Geolocation
 function locateUser() {
-  if (!navigator.geolocation) { showToast('الموقع غير مدعوم في هذا المتصفح'); return; }
-  showToast('📍 جاري تحديد موقعك...');
+  if (!navigator.geolocation) { showToast(t('locationUnsupported')); return; }
+  showToast('📍 ' + t('locating'));
   navigator.geolocation.getCurrentPosition(
     pos => {
       const lat = pos.coords.latitude;
@@ -379,13 +407,13 @@ function locateUser() {
             </div>`,
           className: '', iconSize: [22, 22], iconAnchor: [11, 11]
         })
-      }).addTo(map).bindPopup('📍 أنت هنا').openPopup();
+      }).addTo(map).bindPopup('📍 ' + t('youAreHere')).openPopup();
       map.setView([lat, lng], 15, { animate: true });
-      showToast('✅ تم تحديد موقعك — اضغط "اتجاهاتي" لأي مكان');
+      showToast(t('locationSuccess'));
     },
     err => {
-      if (err.code === 1) showToast('❌ يرجى السماح بالوصول للموقع في المتصفح');
-      else showToast('تعذّر الحصول على موقعك، حاول مرة أخرى');
+      if (err.code === 1) showToast('❌ ' + t('locationDenied'));
+      else showToast(t('locationFailed'));
     },
     { enableHighAccuracy: true, timeout: 12000 }
   );
@@ -405,7 +433,7 @@ async function getDirections() {
   }
 
   if (!userLocation) {
-    showToast('📍 يتم تحديد موقعك أولاً...');
+    showToast('📍 ' + t('activateLocation'));
     navigator.geolocation.getCurrentPosition(
       pos => {
         userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -418,10 +446,10 @@ async function getDirections() {
             </div>`,
             className: '', iconSize: [22, 22], iconAnchor: [11, 11]
           })
-        }).addTo(map).bindPopup('📍 أنت هنا').openPopup();
+        }).addTo(map).bindPopup('📍 ' + t('youAreHere')).openPopup();
         drawRoute();
       },
-      () => showToast('❌ يرجى تفعيل الموقع أولاً بالضغط على 📍'),
+      () => showToast('❌ ' + t('activateLocation')),
       { enableHighAccuracy: true, timeout: 12000 }
     );
     return;
@@ -432,7 +460,7 @@ async function getDirections() {
 async function drawRoute() {
   if (!userLocation || !currentPlace) return;
   clearRoute();
-  showToast('🗺️ جاري حساب أقصر طريق...');
+  showToast('🗺️ ' + t('calculatingRoute'));
   const start = [userLocation.lng, userLocation.lat];
   const end   = [currentPlace.lng, currentPlace.lat];
   try {
@@ -441,7 +469,7 @@ async function drawRoute() {
     if (!res.ok) throw new Error('Route service error');
     const data = await res.json();
     if (!data.routes || data.routes.length === 0) {
-      showToast('⚠️ لم يتم العثور على مسار');
+      showToast('⚠️ ' + t('routeNotFound'));
       return;
     }
     const route = data.routes[0];
@@ -453,7 +481,7 @@ async function drawRoute() {
     showRouteBanner(distKm, distMin);
   } catch (e) {
     console.error('Routing error:', e);
-    showToast('❌ فشل تحميل المسار، تحقق من الاتصال بالإنترنت');
+    showToast('❌ ' + t('routeFailed'));
   }
 }
 
@@ -471,11 +499,11 @@ function showRouteBanner(distKm, distMin) {
   banner.style.cssText = `position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--bg-mid);border:1px solid var(--border);border-radius:16px;padding:12px 20px;display:flex;align-items:center;gap:16px;z-index:800;box-shadow:0 4px 20px rgba(0,0,0,0.5);direction:rtl;font-family:'Cairo',sans-serif;min-width:260px;`;
   banner.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-size:1rem;font-weight:700;color:var(--gold);">🗺️ ${distKm} كم</span>
-      <span style="font-size:.8rem;color:var(--text-muted);">⏱ ${distMin} دقيقة تقريباً</span>
+      <span style="font-size:1rem;font-weight:700;color:var(--gold);">🗺️ ${distKm} ${t('km')}</span>
+      <span style="font-size:.8rem;color:var(--text-muted);">⏱ ${distMin} ${t('minutes')}</span>
     </div>
     <div style="width:1px;height:36px;background:var(--border);"></div>
-    <div style="font-size:.82rem;color:var(--text-main);flex:1;">إلى <strong>${currentPlace.name}</strong></div>
+    <div style="font-size:.82rem;color:var(--text-main);flex:1;">${t('to')} <strong>${currentPlace.name}</strong></div>
     <button onclick="clearRoute()" style="background:none;border:none;color:var(--text-muted);font-size:1.1rem;cursor:pointer;">✕</button>
   `;
   document.body.appendChild(banner);
@@ -485,17 +513,17 @@ function showRouteBanner(distKm, distMin) {
 function savePlace() {
   if (!currentPlace) return;
   if (!isLoggedIn()) {
-    showToast('🔐 سجّل دخولك أولاً لحفظ الأماكن');
+    showToast('🔐 ' + t('loginRequired'));
     setTimeout(() => window.location.href = 'pages/login.html', 1500);
     return;
   }
-  showToast(`✅ تم حفظ "${currentPlace.name}"`);
+  showToast(`✅ ${t('saveSuccess')} "${currentPlace.name}"`);
 }
 
 // Multiple image upload
 function triggerImageUpload() {
   if (!currentPlace) return;
-  if (!getToken()) { showToast('🔐 يجب تسجيل الدخول لرفع صورة'); return; }
+  if (!getToken()) { showToast('🔐 ' + t('loginRequired')); return; }
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/jpeg,image/png,image/webp';
@@ -503,8 +531,8 @@ function triggerImageUpload() {
   input.onchange = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
-    if (files.length > 5) { showToast('⚠️ الحد الأقصى 5 صور'); return; }
-    showToast(`⏳ جاري رفع ${files.length} صور...`);
+    if (files.length > 5) { showToast('⚠️ ' + t('maxPhotos')); return; }
+    showToast(`⏳ ${t('loading')} ${files.length}...`);
     const formData = new FormData();
     files.forEach(file => formData.append('photos', file));
     try {
@@ -514,14 +542,14 @@ function triggerImageUpload() {
         body: formData
       });
       if (res.ok) {
-        showToast('✅ تم رفع الصور بنجاح');
+        showToast('✅ ' + t('photosUploaded'));
         await loadAttractionsFromAPI();
         const updated = getActivePlaces().find(p => p.id === currentPlace.id);
         if (updated) openDetail(updated);
       } else {
-        showToast('❌ فشل رفع الصور');
+        showToast('❌ ' + t('photosUploadFailed'));
       }
-    } catch { showToast('❌ خطأ في الاتصال'); }
+    } catch { showToast('❌ ' + t('networkError')); }
   };
   input.click();
 }
@@ -542,11 +570,11 @@ function clearChat() {
   chatHistory = [];
   const body = document.getElementById('chatbotBody');
   body.innerHTML = `
-    <div class="cb-msg bot"><div class="cb-bubble">مرحباً مجدداً! 🌙 كيف أقدر أساعدك؟</div></div>
+    <div class="cb-msg bot"><div class="cb-bubble">${currentLang === 'ar' ? 'مرحباً مجدداً! 🌙 كيف أقدر أساعدك؟' : 'Welcome back! 🌙 How can I help you?'}</div></div>
     <div class="cb-suggestions">
-      <button onclick="sendSuggestion(this)">أماكن مناسبة للعائلة</button>
-      <button onclick="sendSuggestion(this)">أقرب مطعم</button>
-      <button onclick="sendSuggestion(this)">المسجد النبوي</button>
+      <button onclick="sendSuggestion(this)">${currentLang === 'ar' ? 'أماكن مناسبة للعائلة' : 'Family-friendly places'}</button>
+      <button onclick="sendSuggestion(this)">${currentLang === 'ar' ? 'أقرب مطعم' : 'Nearest restaurant'}</button>
+      <button onclick="sendSuggestion(this)">${currentLang === 'ar' ? 'المسجد النبوي' : 'Al-Masjid an-Nabawi'}</button>
     </div>`;
 }
 function sendSuggestion(btn) {
@@ -583,7 +611,7 @@ async function sendChatMessage(text) {
     if (typingEl) typingEl.remove();
     if (response.ok) {
       const data = await response.json();
-      const reply = data.reply || 'عذراً، لم أتمكن من الإجابة.';
+      const reply = data.reply || (currentLang === 'ar' ? 'عذراً، لم أتمكن من الإجابة.' : 'Sorry, I could not answer.');
       chatHistory.push({ role: 'assistant', content: reply });
       appendChatMsg(reply, 'bot');
     } else {
@@ -593,7 +621,7 @@ async function sendChatMessage(text) {
     console.error('Chat API error:', error);
     const typingEl = document.getElementById(typingId);
     if (typingEl) typingEl.remove();
-    const fallback = 'عذراً، مشكلة في الاتصال بالمساعد الذكي.';
+    const fallback = currentLang === 'ar' ? 'عذراً، مشكلة في الاتصال بالمساعد الذكي.' : 'Sorry, chatbot connection issue.';
     appendChatMsg(fallback, 'bot');
     chatHistory.push({ role: 'assistant', content: fallback });
   } finally {
@@ -621,7 +649,7 @@ function showUserMenu() {
   menu.style.cssText = `position:fixed;top:64px;left:20px;background:var(--bg-mid);border:1px solid var(--border);border-radius:var(--radius);padding:12px;z-index:1000;min-width:160px;box-shadow:var(--shadow);direction:rtl;`;
   menu.innerHTML = `
     <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">👤 ${getUsername()}</div>
-    <button onclick="logout()" style="width:100%;background:none;border:none;color:var(--red);font-family:'Cairo',sans-serif;font-size:.88rem;cursor:pointer;text-align:right;padding:4px 0;">تسجيل الخروج</button>
+    <button onclick="logout()" style="width:100%;background:none;border:none;color:var(--red);font-family:'Cairo',sans-serif;font-size:.88rem;cursor:pointer;text-align:right;padding:4px 0;">${t('logout')}</button>
   `;
   document.body.appendChild(menu);
   setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 10);
@@ -634,7 +662,7 @@ function logout() {
 // Review modal
 function openReview() {
   if (!isLoggedIn()) {
-    showToast('🔐 سجّل دخولك أولاً للتقييم');
+    showToast('🔐 ' + t('loginRequired'));
     setTimeout(() => window.location.href = 'pages/login.html', 1500);
     return;
   }
@@ -649,8 +677,8 @@ function updateStars(v) {
 }
 async function submitReview() {
   const text = document.getElementById('reviewText').value.trim();
-  if (!currentRating) { showToast('الرجاء اختيار تقييم'); return; }
-  if (!currentPlace) { showToast('حدث خطأ، حاول مرة أخرى'); return; }
+  if (!currentRating) { showToast(t('selectRating')); return; }
+  if (!currentPlace) { showToast(t('actionFailed')); return; }
   
   const username = getUsername();
   
@@ -666,15 +694,15 @@ async function submitReview() {
     });
     
     if (res.ok) {
-      showToast('✅ تم إرسال تقييمك للمراجعة. سيظهر بعد الموافقة عليه.');
+      showToast('✅ ' + t('reviewSubmitted'));
       closeReview();
       document.getElementById('reviewText').value = '';
       setTimeout(() => loadReviewsForPlace(currentPlace.id), 500);
     } else {
-      showToast('❌ فشل إرسال التقييم');
+      showToast('❌ ' + t('reviewFailed'));
     }
   } catch(e) {
-    showToast('❌ خطأ في الاتصال');
+    showToast('❌ ' + t('networkError'));
   }
 }
 
@@ -798,12 +826,7 @@ function initDraggableSidebar() {
   dragHandle.addEventListener('mousedown', startSidebarDrag);
   window.addEventListener('mousemove', dragSidebar);
   window.addEventListener('mouseup', endSidebarDrag);
-  
-  window.addEventListener('mouseup', () => {
-    if (map) setTimeout(() => map.invalidateSize(), 50);
-  });
 }
-
 function startSidebarDrag(e) {
   const sidebar = document.getElementById('sidebar');
   isDraggingSidebar = true;
@@ -815,7 +838,6 @@ function startSidebarDrag(e) {
   e.preventDefault();
   e.stopPropagation();
 }
-
 function dragSidebar(e) {
   if (!isDraggingSidebar) return;
   e.preventDefault();
@@ -825,58 +847,26 @@ function dragSidebar(e) {
   let newWidth = sidebarCurrentWidth + deltaX;
   newWidth = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, newWidth));
   sidebar.style.width = newWidth + 'px';
-  const opacity = Math.min(1, newWidth / 200);
-  const contentElements = sidebar.querySelectorAll('.sidebar-header, .search-wrap, .filter-chips, .places-list, .sidebar-footer');
-  contentElements.forEach(el => el.style.opacity = opacity);
   if (map) map.invalidateSize();
 }
-
 function endSidebarDrag(e) {
   if (!isDraggingSidebar) return;
   const sidebar = document.getElementById('sidebar');
   isDraggingSidebar = false;
   document.body.style.cursor = '';
   sidebar.classList.remove('dragging');
-  const toggleBtn = document.getElementById('toggleSidebarBtn');
-  if (toggleBtn) {
-    const currentWidth = sidebar.offsetWidth;
-    if (currentWidth < 100) {
-      toggleBtn.innerHTML = '▶';
-      toggleBtn.classList.add('collapsed');
-    } else {
-      toggleBtn.innerHTML = '◀';
-      toggleBtn.classList.remove('collapsed');
-    }
-  }
   if (map) map.invalidateSize();
 }
-
 function toggleSidebarState() {
   const sidebar = document.getElementById('sidebar');
-  const toggleBtn = document.getElementById('toggleSidebarBtn');
   const currentWidth = sidebar.offsetWidth;
   if (currentWidth < 100) {
-    const savedWidth = localStorage.getItem('sidebarWidth') || '340';
-    sidebar.style.width = savedWidth + 'px';
-    if (toggleBtn) {
-      toggleBtn.innerHTML = '◀';
-      toggleBtn.classList.remove('collapsed');
-    }
+    sidebar.style.width = '340px';
   } else {
-    localStorage.setItem('sidebarWidth', currentWidth);
     sidebar.style.width = '0px';
-    if (toggleBtn) {
-      toggleBtn.innerHTML = '▶';
-      toggleBtn.classList.add('collapsed');
-    }
   }
-  const newWidth = sidebar.offsetWidth;
-  const opacity = Math.min(1, newWidth / 200);
-  const contentElements = sidebar.querySelectorAll('.sidebar-header, .search-wrap, .filter-chips, .places-list, .sidebar-footer');
-  contentElements.forEach(el => el.style.opacity = opacity);
   setTimeout(() => { if (map) map.invalidateSize(); }, 50);
 }
-
 function toggleSidebar() {
   if (window.innerWidth <= 768) {
     const sidebar = document.getElementById('sidebar');
@@ -886,20 +876,19 @@ function toggleSidebar() {
     toggleSidebarState();
   }
 }
-
-function toggleSidebarCollapse() {
-  toggleSidebarState();
-}
+function toggleSidebarCollapse() { toggleSidebarState(); }
 
 document.addEventListener('click', function(e) {
   if (window.innerWidth <= 768) {
     const sidebar = document.getElementById('sidebar');
     const menuBtn = document.querySelector('.menu-btn');
-    if (sidebar && sidebar.classList.contains('mobile-open') && 
-        !sidebar.contains(e.target) && 
+    if (sidebar && sidebar.classList.contains('mobile-open') &&
+        !sidebar.contains(e.target) &&
         menuBtn && !menuBtn.contains(e.target)) {
       sidebar.classList.remove('mobile-open');
       setTimeout(() => map?.invalidateSize(), 250);
     }
   }
 });
+
+
