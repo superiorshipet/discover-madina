@@ -7,3 +7,10 @@ backend/**/appsettings.json
 backend/appsettings.json
 backend/bin/
 backend/obj/
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env
+history/
+*history
