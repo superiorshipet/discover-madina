@@ -28,18 +28,16 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Register([FromBody] RegisterDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Username) || string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
-            return BadRequest(new { message = "جميع الحقول مطلوبة" });
+            return BadRequest(new { message = "All fields required" });
 
         if (dto.Password.Length < 6)
-            return BadRequest(new { message = "كلمة المرور 6 أحرف على الأقل" });
+            return BadRequest(new { message = "Password too short" });
 
-        var existingEmail = await _userRepo.GetByEmailAsync(dto.Email);
-        if (existingEmail != null) 
-            return Conflict(new { message = "البريد الإلكتروني مستخدم بالفعل" });
+        if (await _userRepo.GetByEmailAsync(dto.Email) != null)
+            return Conflict(new { message = "Email already used" });
 
-        var existingUsername = await _userRepo.GetByUsernameAsync(dto.Username);
-        if (existingUsername != null) 
-            return Conflict(new { message = "اسم المستخدم مستخدم بالفعل" });
+        if (await _userRepo.GetByUsernameAsync(dto.Username) != null)
+            return Conflict(new { message = "Username taken" });
 
         var user = new User
         {
@@ -48,7 +46,7 @@ public class AuthController : ControllerBase
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             PreferredLanguage = dto.PreferredLanguage
         };
-        
+
         await _userRepo.CreateAsync(user);
         var token = GenerateToken(user.Id.ToString(), user.Username, "user");
         return Ok(new AuthResponseDto(token, user.Username, "user"));
@@ -57,10 +55,6 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Username) || string.IsNullOrWhiteSpace(dto.Password))
-            return BadRequest(new { message = "أدخل اسم المستخدم وكلمة المرور" });
-
-        // Check Admins table first
         var admin = await _adminRepo.GetByUsernameAsync(dto.Username);
         if (admin != null && BCrypt.Net.BCrypt.Verify(dto.Password, admin.PasswordHash))
         {
@@ -68,13 +62,9 @@ public class AuthController : ControllerBase
             return Ok(new AuthResponseDto(token, admin.Username, admin.Role));
         }
 
-        // Check regular user
-        var user = await _userRepo.GetByUsernameAsync(dto.Username);
-        if (user == null)
-            user = await _userRepo.GetByEmailAsync(dto.Username); // allow login by email too
-
+        var user = await _userRepo.GetByUsernameAsync(dto.Username) ?? await _userRepo.GetByEmailAsync(dto.Username);
         if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-            return Unauthorized(new { message = "اسم المستخدم أو كلمة المرور غير صحيحة" });
+            return Unauthorized(new { message = "Invalid credentials" });
 
         var userToken = GenerateToken(user.Id.ToString(), user.Username, "user");
         return Ok(new AuthResponseDto(userToken, user.Username, "user"));
@@ -84,25 +74,23 @@ public class AuthController : ControllerBase
     public IActionResult Me()
     {
         var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
-        if (string.IsNullOrEmpty(token)) 
-            return Unauthorized();
-            
+        if (string.IsNullOrEmpty(token)) return Unauthorized();
         try
         {
             var principal = ValidateToken(token);
-            var username = principal.FindFirst(ClaimTypes.Name)?.Value;
-            var role = principal.FindFirst(ClaimTypes.Role)?.Value;
-            return Ok(new { username, role });
+            return Ok(new
+            {
+                username = principal.FindFirst(ClaimTypes.Name)?.Value,
+                role = principal.FindFirst(ClaimTypes.Role)?.Value
+            });
         }
-        catch 
-        { 
-            return Unauthorized(); 
-        }
+        catch { return Unauthorized(); }
     }
 
     private string GenerateToken(string userId, string username, string role)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"] ?? "DiscoverMadinaSecretKey2025!"));
+        var jwtKey = _config["Jwt:Key"] ?? "DiscoverMadinaSuperSecretKey2025!@#$";
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var claims = new[]
         {
@@ -122,13 +110,14 @@ public class AuthController : ControllerBase
 
     private ClaimsPrincipal ValidateToken(string token)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"] ?? "DiscoverMadinaSecretKey2025!"));
+        var jwtKey = _config["Jwt:Key"] ?? "DiscoverMadinaSuperSecretKey2025!@#$";
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var handler = new JwtSecurityTokenHandler();
         return handler.ValidateToken(token, new TokenValidationParameters
         {
-            ValidateIssuer = true, 
+            ValidateIssuer = true,
             ValidIssuer = _config["Jwt:Issuer"] ?? "DiscoverMadina",
-            ValidateAudience = true, 
+            ValidateAudience = true,
             ValidAudience = _config["Jwt:Audience"] ?? "DiscoverMadinaUsers",
             ValidateLifetime = true,
             IssuerSigningKey = key
