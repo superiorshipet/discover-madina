@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DiscoverMadina.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class AddSavedPlaces : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -22,7 +22,8 @@ namespace DiscoverMadina.Migrations
                     Username = table.Column<string>(type: "TEXT", nullable: false),
                     PasswordHash = table.Column<string>(type: "TEXT", nullable: false),
                     Role = table.Column<string>(type: "TEXT", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    CreatedBy = table.Column<int>(type: "INTEGER", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -68,6 +69,29 @@ namespace DiscoverMadina.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Users", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AttractionPhotos",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    AttractionId = table.Column<int>(type: "INTEGER", nullable: false),
+                    ImageUrl = table.Column<string>(type: "TEXT", nullable: false),
+                    IsPrimary = table.Column<bool>(type: "INTEGER", nullable: false),
+                    DisplayOrder = table.Column<int>(type: "INTEGER", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AttractionPhotos", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AttractionPhotos_Attractions_AttractionId",
+                        column: x => x.AttractionId,
+                        principalTable: "Attractions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -122,10 +146,37 @@ namespace DiscoverMadina.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "SavedPlaces",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    UserId = table.Column<int>(type: "INTEGER", nullable: false),
+                    AttractionId = table.Column<int>(type: "INTEGER", nullable: false),
+                    SavedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SavedPlaces", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_SavedPlaces_Attractions_AttractionId",
+                        column: x => x.AttractionId,
+                        principalTable: "Attractions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_SavedPlaces_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.InsertData(
                 table: "Admins",
-                columns: new[] { "Id", "CreatedAt", "PasswordHash", "Role", "Username" },
-                values: new object[] { 1, new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "$2a$11$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi", "superadmin", "admin01" });
+                columns: new[] { "Id", "CreatedAt", "CreatedBy", "PasswordHash", "Role", "Username" },
+                values: new object[] { 1, new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "$2a$11$1ioELlW56Hdls.kipvWNPOoe8K7lWp5HWUMZi7yj.4smkj5gx.k9q", "superadmin", "superior" });
 
             migrationBuilder.InsertData(
                 table: "Attractions",
@@ -138,6 +189,11 @@ namespace DiscoverMadina.Migrations
                     { 4, "entertainment", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "أكبر حديقة عامة في المدينة المنورة.", "🌳", null, true, 24.4800m, 39.5960m, "حديقة الملك فهد", "King Fahd Park", "07:00 - 23:00", 4.4f },
                     { 5, "dining", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "سلسلة مطاعم سعودية شهيرة.", "🍗", null, false, 24.4680m, 39.6090m, "مطعم البيك", "Al-Baik Restaurant", "10:00 - 02:00", 4.7f }
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AttractionPhotos_AttractionId",
+                table: "AttractionPhotos",
+                column: "AttractionId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ChatLogs_UserId",
@@ -153,6 +209,16 @@ namespace DiscoverMadina.Migrations
                 name: "IX_Reviews_UserId",
                 table: "Reviews",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SavedPlaces_AttractionId",
+                table: "SavedPlaces",
+                column: "AttractionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SavedPlaces_UserId",
+                table: "SavedPlaces",
+                column: "UserId");
         }
 
         /// <inheritdoc />
@@ -162,10 +228,16 @@ namespace DiscoverMadina.Migrations
                 name: "Admins");
 
             migrationBuilder.DropTable(
+                name: "AttractionPhotos");
+
+            migrationBuilder.DropTable(
                 name: "ChatLogs");
 
             migrationBuilder.DropTable(
                 name: "Reviews");
+
+            migrationBuilder.DropTable(
+                name: "SavedPlaces");
 
             migrationBuilder.DropTable(
                 name: "Attractions");

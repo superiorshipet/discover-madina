@@ -1,46 +1,80 @@
-using Microsoft.EntityFrameworkCore;
 using DiscoverMadina.Data;
 using DiscoverMadina.Models;
 using DiscoverMadina.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace DiscoverMadina.Repositories;
 
 public class ReviewRepository : IReviewRepository
 {
-    private readonly AppDbContext _db;
-    public ReviewRepository(AppDbContext db) => _db = db;
+    private readonly AppDbContext _context;
 
-    public async Task<IEnumerable<Review>> GetByAttractionAsync(int attractionId) =>
-        await _db.Reviews.Include(r => r.User).Where(r => r.AttractionId == attractionId && r.Status == "approved")
-            .OrderByDescending(r => r.CreatedAt).ToListAsync();
+    public ReviewRepository(AppDbContext context)
+    {
+        _context = context;
+    }
 
-    public async Task<IEnumerable<Review>> GetPendingAsync() =>
-        await _db.Reviews.Include(r => r.User).Include(r => r.Attraction)
-            .Where(r => r.Status == "pending" || r.Status == "flagged")
-            .OrderByDescending(r => r.CreatedAt).ToListAsync();
+    public async Task<List<Review>> GetByAttractionAsync(int attractionId)
+    {
+        if (attractionId == 0)
+        {
+            return await _context.Reviews
+                .Include(r => r.User)
+                .Include(r => r.Attraction)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
+        }
+        
+        return await _context.Reviews
+            .Include(r => r.User)
+            .Include(r => r.Attraction)
+            .Where(r => r.AttractionId == attractionId)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
+    }
+
+    public async Task<List<Review>> GetPendingAsync()
+    {
+        return await _context.Reviews
+            .Include(r => r.User)
+            .Include(r => r.Attraction)
+            .Where(r => r.Status == "pending")
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
+    }
+
+    public async Task<Review?> GetByIdAsync(int id)
+    {
+        return await _context.Reviews
+            .Include(r => r.User)
+            .Include(r => r.Attraction)
+            .FirstOrDefaultAsync(r => r.Id == id);
+    }
 
     public async Task<Review> CreateAsync(Review review)
     {
-        _db.Reviews.Add(review);
-        await _db.SaveChangesAsync();
+        _context.Reviews.Add(review);
+        await _context.SaveChangesAsync();
         return review;
     }
 
     public async Task<Review?> UpdateStatusAsync(int id, string status)
     {
-        var review = await _db.Reviews.FindAsync(id);
+        var review = await _context.Reviews.FindAsync(id);
         if (review == null) return null;
+        
         review.Status = status;
-        await _db.SaveChangesAsync();
+        await _context.SaveChangesAsync();
         return review;
     }
 
     public async Task<bool> DeleteAsync(int id)
     {
-        var r = await _db.Reviews.FindAsync(id);
-        if (r == null) return false;
-        _db.Reviews.Remove(r);
-        await _db.SaveChangesAsync();
+        var review = await _context.Reviews.FindAsync(id);
+        if (review == null) return false;
+        
+        _context.Reviews.Remove(review);
+        await _context.SaveChangesAsync();
         return true;
     }
 }

@@ -1,20 +1,210 @@
 // ============================================
-// DISCOVER MADINA — Static Demo Data
+// DISCOVER MADINA — Data Configuration
 // ============================================
 
-// ✅ Auto-detect: Railway in production, localhost in development
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? 'http://localhost:8080/api'
   : `${window.location.origin}/api`;
 
-// Mock data removed - use only DB
-const PLACES = [];
+// Language setup - MUST be var for global access
+var currentLang = localStorage.getItem('language') || 'ar';
+if (!localStorage.getItem('language')) {
+  localStorage.setItem('language', 'ar');
+}
+
+// Set direction on load
+document.documentElement.lang = currentLang;
+document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+
+const PLACES = [
+  { id: 1, name: "المسجد النبوي", nameEn: "Al-Masjid an-Nabawi", category: "religious", icon: "🕌", lat: 24.5242, lng: 39.6111, rating: 5.0, reviews: 1200, hours: "24/7", description: "الجامع الأنور، قبلة المسلمين الثانية.", imageUrl: "", tags: ["religious"], featured: true },
+  { id: 2, name: "مسجد قباء", nameEn: "Quba Mosque", category: "religious", icon: "🕌", lat: 24.4594, lng: 39.5953, rating: 4.9, reviews: 450, hours: "5ص - 11م", description: "أول مسجد في الإسلام.", imageUrl: "", tags: ["religious"], featured: true },
+  { id: 3, name: "جبل أحد", nameEn: "Mount Uhud", category: "cultural", icon: "⛰️", lat: 24.5267, lng: 39.6411, rating: 4.7, reviews: 320, hours: "دائماً", description: "موقع غزوة أحد التاريخية.", imageUrl: "", tags: ["cultural"], featured: true },
+  { id: 4, name: "قلعة أحد", nameEn: "Uhud Castle", category: "cultural", icon: "🏰", lat: 24.5205, lng: 39.6402, rating: 4.6, reviews: 280, hours: "9ص - 6م", description: "معلم عثماني تاريخي.", imageUrl: "", tags: ["cultural"], featured: false },
+  { id: 5, name: "حديقة الملك فهد", nameEn: "King Fahd Park", category: "entertainment", icon: "🌳", lat: 24.4700, lng: 39.6200, rating: 4.4, reviews: 150, hours: "8ص - 11م", description: "حديقة عامة واسعة.", imageUrl: "", tags: ["entertainment"], featured: true },
+  { id: 6, name: "مطعم مندي الدخيل", nameEn: "Mandi Al Dukheil", category: "dining", icon: "🍗", lat: 24.4750, lng: 39.6150, rating: 4.5, reviews: 89, hours: "11ص - 1ص", description: "مندي وكبسة أصيلة.", imageUrl: "", tags: ["dining"], featured: false }
+];
 
 const CATEGORY_LABELS = { all:'الكل', religious:'ديني', cultural:'ثقافي', entertainment:'ترفيه', dining:'مطاعم' };
 
-const CHATBOT_RESPONSES = {
-  'أماكن مناسبة للعائلة': 'بالطبع! 🌟 أنصحك بحديقة الملك فهد للتنزه وسوق المدينة المركزي للتسوق العائلي.',
-  'أقرب مطعم': 'قريباً منك يوجد مطعم البيك الشهير ومطعم مندي الدخيل للمأكولات التقليدية. 🍽️',
-  'المسجد النبوي': 'المسجد النبوي مفتوح 24/7 في قلب المدينة المنورة. 🕌 يمكنك الوصول سيراً من معظم الفنادق.',
-  'default': 'شكراً لسؤالك! 😊 يمكنني مساعدتك في إيجاد الأماكن الدينية والثقافية والمطاعم. ماذا تريد؟'
+// ============================================
+// COMPLETE TRANSLATIONS
+// ============================================
+const TRANSLATIONS = {
+  ar: {
+    appName: 'اكتشف المدينة', appSub: 'Discover Madina',
+    searchPlaceholder: 'ابحث عن مسجد، متحف، مطعم...',
+    all: 'الكل', myLocation: 'موقعي', religious: 'ديني', cultural: 'ثقافي', entertainment: 'ترفيه', dining: 'مطاعم',
+    suggestedPlaces: 'أماكن مقترحة', today: 'اليوم', login: 'تسجيل الدخول', logout: 'تسجيل الخروج',
+    adminPanel: 'لوحة الإدارة', welcome: 'مرحبا', noResults: 'لا توجد نتائج', noSuggestedPlaces: 'لا توجد أماكن مقترحة',
+    dragHint: '↑ اسحب للأعلى للمزيد ↑',
+    directions: 'الاتجاهات', save: 'حفظ', review: 'تقييم', photos: 'صور', hours: 'ساعات العمل',
+    description: 'الوصف', more: 'المزيد', less: 'أقل', reviews: 'التقييمات والمراجعات',
+    noReviews: 'لا توجد تقييمات بعد. كن أول من يقيم!', submitReview: 'إرسال التقييم', cancel: 'إلغاء',
+    writeReview: 'أضف تقييمك', shareExperience: 'شاركنا تجربتك...', selectRating: 'الرجاء اختيار تقييم',
+    reviewSubmitted: 'تم إرسال تقييمك للمراجعة. سيظهر بعد الموافقة عليه.', reviewFailed: 'فشل إرسال التقييم',
+    reviewApproved: 'تمت الموافقة على التقييم', reviewRejected: 'تم رفض التقييم',
+    couldNotLoadReviews: 'تعذر تحميل التقييمات', loadError: 'خطأ في التحميل',
+    usernameOrEmail: 'اسم المستخدم أو البريد الإلكتروني', password: 'كلمة المرور', confirmPassword: 'تأكيد كلمة المرور',
+    signIn: 'تسجيل الدخول', signUp: 'إنشاء حساب', register: 'إنشاء حساب جديد', guestContinue: 'المتابعة كضيف',
+    browseAsGuest: 'تصفح كضيف', haveAccount: 'لديك حساب؟', noAccount: 'ليس لديك حساب؟',
+    allFieldsRequired: 'جميع الحقول مطلوبة', passwordTooShort: 'كلمة المرور 6 أحرف على الأقل',
+    passwordsDontMatch: 'كلمة المرور غير متطابقة', emailInUse: 'البريد الإلكتروني مستخدم بالفعل',
+    usernameTaken: 'اسم المستخدم مستخدم بالفعل', invalidCredentials: 'اسم المستخدم أو كلمة المرور غير صحيحة',
+    loginRequired: 'يجب تسجيل الدخول كمشرف أولاً', sessionExpired: 'انتهت الجلسة، يرجى تسجيل الدخول مجدداً',
+    verifying: 'جاري التحقق...', creating: 'جاري الإنشاء...',
+    serverError: 'تعذر الاتصال بالخادم. تأكد من تشغيل الـ backend.', registrationSuccess: 'تم إنشاء الحساب بنجاح',
+    locating: 'جاري تحديد موقعك...', locationUnsupported: 'الموقع غير مدعوم في هذا المتصفح',
+    locationDenied: 'يرجى السماح بالوصول للموقع في المتصفح', locationFailed: 'تعذّر الحصول على موقعك، حاول مرة أخرى',
+    locationSuccess: 'تم تحديد موقعك — اضغط "اتجاهاتي" لأي مكان',
+    activateLocation: 'يرجى تفعيل الموقع أولاً بالضغط على 📍', calculatingRoute: 'جاري حساب أقصر طريق...',
+    routeNotFound: 'لم يتم العثور على مسار', routeFailed: 'فشل تحميل المسار، تحقق من الاتصال بالإنترنت',
+    youAreHere: 'أنت هنا', to: 'إلى', km: 'كم', minutes: 'دقيقة تقريباً',
+    overview: 'نظرة عامة', places: 'الأماكن', users: 'المستخدمون', admins: 'المشرفون', settings: 'الإعدادات',
+    backToMap: 'العودة للخريطة', totalPlaces: 'إجمالي الأماكن', pendingReviews: 'التقييمات المعلّقة',
+    totalUsers: 'المستخدمون', totalReviews: 'إجمالي التقييمات', recentPlaces: 'أحدث الأماكن',
+    noRecentPlaces: 'لا توجد أماكن حديثة', addPlace: 'إضافة مكان', editPlace: 'تعديل مكان',
+    deletePlace: 'حذف', savePlace: 'حفظ', clear: 'مسح', confirmDelete: 'هل أنت متأكد من حذف هذا المكان؟',
+    placeSaved: 'تم الحفظ بنجاح', placeDeleted: 'تم الحذف', placeSaveFailed: 'فشل الحفظ، تحقق من البيانات',
+    placeDeleteFailed: 'فشل الحذف', fillRequired: 'يرجى ملء الاسم والإحداثيات على الأقل',
+    placeLoaded: 'تم تحميل بيانات المكان للتعديل',
+    addAdmin: 'إضافة مشرف', superAdmin: 'مشرف عام', regularAdmin: 'مشرف عادي',
+    currentAdmins: 'المشرفون الحاليون', you: 'أنت', currentAccount: 'الحساب الحالي',
+    adminCreated: 'تم إضافة المشرف بنجاح', adminDeleted: 'تم حذف المشرف',
+    adminCreateFailed: 'فشل إضافة المشرف', adminDeleteFailed: 'فشل حذف المشرف',
+    cannotDeleteSelf: 'لا يمكن حذف حسابك الحالي', cannotDeleteLastSuper: 'لا يمكن حذف آخر مشرف عام',
+    superAdminWarning: 'تحذير: هذا مشرف عام. هل أنت متأكد من الحذف؟',
+    confirmDeleteAdmin: 'هل أنت متأكد من حذف هذا المشرف؟',
+    superAdminOnly: 'هذه الصفحة للمشرف العام فقط', notAuthorized: 'غير مصرح لك بإضافة مشرفين',
+    notAuthorizedDelete: 'غير مصرح لك بحذف مشرفين',
+    approve: 'موافقة', reject: 'رفض', noReviewsYet: 'لا توجد تقييمات', unknownPlace: 'مكان غير معروف',
+    deleteUser: 'حذف المستخدم', confirmDeleteUser: 'هل أنت متأكد من حذف هذا المستخدم؟',
+    userDeleted: 'تم حذف المستخدم', userDeleteFailed: 'فشل حذف المستخدم',
+    networkError: 'خطأ في الاتصال', saveSuccess: 'تم الحفظ بنجاح', deleteSuccess: 'تم الحذف',
+    actionFailed: 'فشلت العملية', loading: 'جاري التحميل...', noPhotos: 'لا توجد صور لهذا المكان',
+    photosUploaded: 'تم رفع الصور بنجاح', photosUploadFailed: 'فشل رفع الصور',
+    maxPhotos: 'الحد الأقصى 5 صور', choosePhotos: 'اختر صور', currentPhotos: 'الصور الحالية',
+    primary: 'رئيسية', setAsPrimary: 'تعيين كصورة رئيسية', photoSetPrimary: 'تم تعيين الصورة كرئيسية',
+    photoDeleted: 'تم حذف الصورة', close: 'إغلاق',
+    placeNameAr: 'اسم المكان (عربي)', placeNameEn: 'الاسم (إنجليزي)', category: 'التصنيف',
+    icon: 'الأيقونة (Emoji)', latitude: 'خط العرض', longitude: 'خط الطول',
+    openingHours: 'ساعات العمل', featured: 'مميز؟', yes: 'نعم', no: 'لا',
+    placeImage: 'صورة المكان', currentImage: 'الصورة الحالية',
+    photoManagement: 'إدارة الصور', uploadNewPhotos: 'رفع صور جديدة (حد أقصى 5 صور)',
+    uploadInfo: 'يمكنك رفع حتى 5 صور. الصورة الأولى تكون الرئيسية.',
+    or: 'أو', enterUsername: 'أدخل اسم المستخدم', enterPassword: 'أدخل كلمة المرور',
+    enterEmail: 'example@email.com', preferredLanguage: 'اللغة المفضلة', arabic: 'العربية',
+    english: 'English', createAccount: 'إنشاء الحساب',
+    addReview: 'أضف تقييمك', pending: 'معلّق', approved: 'تمت الموافقة', rejected: 'مرفوض',
+    image: 'صورة', name: 'الاسم', actions: 'إجراءات', edit: 'تعديل', delete: 'حذف',
+    status: 'الحالة', rating: 'التقييم', joined: 'تاريخ التسجيل', role: 'الدور',
+    username: 'اسم المستخدم', noComment: 'بدون تعليق',
+    addNewAdmin: 'إضافة مشرف جديد', adminUsername: 'اسم المستخدم', adminPassword: 'كلمة المرور',
+    adminRole: 'الدور', createAdmin: 'إضافة مشرف', currentAdminsList: 'المشرفون الحاليون',
+    errorLoadingData: 'خطأ في تحميل البيانات', notAuthorizedSuperAdmin: 'غير مصرح - يتطلب صلاحيات مشرف عام',
+    sessionExpiredRelogin: 'انتهت الجلسة، يرجى تسجيل الدخول مجدداً',
+    dataLoadedForEdit: 'تم تحميل بيانات المكان للتعديل',
+  },
+  en: {
+    appName: 'Discover Madina', appSub: 'Discover Madina',
+    searchPlaceholder: 'Search for mosques, museums, restaurants...',
+    all: 'All', myLocation: 'My Location', religious: 'Religious', cultural: 'Cultural',
+    entertainment: 'Entertainment', dining: 'Dining',
+    suggestedPlaces: 'Suggested Places', today: 'Today', login: 'Login', logout: 'Logout',
+    adminPanel: 'Admin Panel', welcome: 'Welcome', noResults: 'No results found',
+    noSuggestedPlaces: 'No suggested places', dragHint: '↑ Drag up for more ↑',
+    directions: 'Directions', save: 'Save', review: 'Review', photos: 'Photos',
+    hours: 'Opening Hours', description: 'Description', more: 'More', less: 'Less',
+    reviews: 'Reviews', noReviews: 'No reviews yet. Be the first!',
+    submitReview: 'Submit Review', cancel: 'Cancel', writeReview: 'Write Your Review',
+    shareExperience: 'Share your experience...', selectRating: 'Please select a rating',
+    reviewSubmitted: 'Review submitted for approval. It will appear after approval.',
+    reviewFailed: 'Failed to submit review', reviewApproved: 'Review approved',
+    reviewRejected: 'Review rejected', couldNotLoadReviews: 'Could not load reviews',
+    loadError: 'Error loading data',
+    usernameOrEmail: 'Username or Email', password: 'Password', confirmPassword: 'Confirm Password',
+    signIn: 'Sign In', signUp: 'Sign Up', register: 'Create Account',
+    guestContinue: 'Continue as Guest', browseAsGuest: 'Browse as Guest',
+    haveAccount: 'Already have an account?', noAccount: "Don't have an account?",
+    allFieldsRequired: 'All fields are required', passwordTooShort: 'Password must be at least 6 characters',
+    passwordsDontMatch: 'Passwords do not match', emailInUse: 'Email already in use',
+    usernameTaken: 'Username already taken', invalidCredentials: 'Invalid username or password',
+    loginRequired: 'Admin login required', sessionExpired: 'Session expired, please login again',
+    verifying: 'Verifying...', creating: 'Creating...',
+    serverError: 'Could not connect to server. Make sure the backend is running.',
+    registrationSuccess: 'Account created successfully',
+    locating: 'Locating you...', locationUnsupported: 'Location not supported in this browser',
+    locationDenied: 'Please allow location access in your browser',
+    locationFailed: 'Could not get your location, try again',
+    locationSuccess: 'Location found — tap "Directions" for any place',
+    activateLocation: 'Please enable location first by tapping 📍',
+    calculatingRoute: 'Calculating shortest route...', routeNotFound: 'No route found',
+    routeFailed: 'Failed to load route, check your internet connection',
+    youAreHere: 'You are here', to: 'to', km: 'km', minutes: 'minutes approx',
+    overview: 'Overview', places: 'Places', users: 'Users', admins: 'Admins', settings: 'Settings',
+    backToMap: 'Back to Map', totalPlaces: 'Total Places', pendingReviews: 'Pending Reviews',
+    totalUsers: 'Total Users', totalReviews: 'Total Reviews', recentPlaces: 'Recent Places',
+    noRecentPlaces: 'No recent places', addPlace: 'Add Place', editPlace: 'Edit Place',
+    deletePlace: 'Delete', savePlace: 'Save', clear: 'Clear',
+    confirmDelete: 'Are you sure you want to delete this place?',
+    placeSaved: 'Saved successfully', placeDeleted: 'Deleted successfully',
+    placeSaveFailed: 'Save failed, check the data', placeDeleteFailed: 'Delete failed',
+    fillRequired: 'Please fill in name and coordinates at minimum',
+    placeLoaded: 'Place data loaded for editing',
+    addAdmin: 'Add Admin', superAdmin: 'Super Admin', regularAdmin: 'Regular Admin',
+    currentAdmins: 'Current Admins', you: 'You', currentAccount: 'Current account',
+    adminCreated: 'Admin created successfully', adminDeleted: 'Admin deleted',
+    adminCreateFailed: 'Failed to create admin', adminDeleteFailed: 'Failed to delete admin',
+    cannotDeleteSelf: 'Cannot delete your own account',
+    cannotDeleteLastSuper: 'Cannot delete the last super admin',
+    superAdminWarning: 'Warning: This is a super admin. Are you sure?',
+    confirmDeleteAdmin: 'Are you sure you want to delete this admin?',
+    superAdminOnly: 'This page is for super admin only',
+    notAuthorized: 'Not authorized to add admins', notAuthorizedDelete: 'Not authorized to delete admins',
+    approve: 'Approve', reject: 'Reject', noReviewsYet: 'No reviews', unknownPlace: 'Unknown place',
+    deleteUser: 'Delete User', confirmDeleteUser: 'Are you sure you want to delete this user?',
+    userDeleted: 'User deleted', userDeleteFailed: 'Failed to delete user',
+    networkError: 'Network error', saveSuccess: 'Saved successfully',
+    deleteSuccess: 'Deleted successfully', actionFailed: 'Action failed',
+    loading: 'Loading...', noPhotos: 'No photos for this place',
+    photosUploaded: 'Photos uploaded successfully', photosUploadFailed: 'Photo upload failed',
+    maxPhotos: 'Maximum 5 photos', choosePhotos: 'Choose Photos', currentPhotos: 'Current Photos',
+    primary: 'Primary', setAsPrimary: 'Set as primary', photoSetPrimary: 'Photo set as primary',
+    photoDeleted: 'Photo deleted', close: 'Close',
+    placeNameAr: 'Place Name (Arabic)', placeNameEn: 'Place Name (English)',
+    category: 'Category', icon: 'Icon (Emoji)', latitude: 'Latitude', longitude: 'Longitude',
+    openingHours: 'Opening Hours', featured: 'Featured?', yes: 'Yes', no: 'No',
+    placeImage: 'Place Image', currentImage: 'Current Image',
+    photoManagement: 'Photo Management', uploadNewPhotos: 'Upload New Photos (Max 5)',
+    uploadInfo: 'You can upload up to 5 photos. The first one will be primary.',
+    or: 'or', enterUsername: 'Enter username', enterPassword: 'Enter password',
+    enterEmail: 'example@email.com', preferredLanguage: 'Preferred Language',
+    arabic: 'العربية', english: 'English', createAccount: 'Create Account',
+    addReview: 'Add Your Review', pending: 'Pending', approved: 'Approved', rejected: 'Rejected',
+    image: 'Image', name: 'Name', actions: 'Actions', edit: 'Edit', delete: 'Delete',
+    status: 'Status', rating: 'Rating', joined: 'Joined', role: 'Role',
+    username: 'Username', noComment: 'No comment',
+    addNewAdmin: 'Add New Admin', adminUsername: 'Username', adminPassword: 'Password',
+    adminRole: 'Role', createAdmin: 'Create Admin', currentAdminsList: 'Current Admins',
+    errorLoadingData: 'Error loading data', notAuthorizedSuperAdmin: 'Not authorized - Super admin required',
+    sessionExpiredRelogin: 'Session expired, please login again',
+    dataLoadedForEdit: 'Data loaded for editing',
+  }
 };
+
+// Add to TRANSLATIONS (both ar and en):
+// In the 'ar' section, add:
+// savedSuccessfully: 'تم الحفظ بنجاح',
+// alreadySaved: 'تم الحفظ مسبقاً',
+// saveFailed: 'فشل الحفظ',
+// saved: 'محفوظ',
+// mySavedPlaces: 'الأماكن المحفوظة',
+// noSavedPlaces: 'لا توجد أماكن محفوظة',
+
+// In the 'en' section, add:
+// savedSuccessfully: 'Saved successfully',
+// alreadySaved: 'Already saved',
+// saveFailed: 'Save failed',
+// saved: 'Saved',
+// mySavedPlaces: 'My Saved Places',
+// noSavedPlaces: 'No saved places',
